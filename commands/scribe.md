@@ -9,17 +9,26 @@ The panel lives at `C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel`. R
 the matching PowerShell command, then report the result in one line. Do not
 explain the panel unless asked.
 
+He is summoned automatically at session start by the `scribe-launch.mjs` hook,
+so these are for when you want to force the issue.
+
+Every command below identifies him with `Get-CimInstance`. `Get-Process` does
+**not** expose `CommandLine` on Windows PowerShell 5.1 — it comes back empty, so
+filtering on it matches nothing and killing without it kills every `pythonw` on
+the machine.
+
 **summon** (no arguments, or `start`) — replaces any running instance:
 
 ```powershell
-Get-Process pythonw -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*scribe_window*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Milliseconds 400
 Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel/scribe_window.py" -WorkingDirectory "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel" -WindowStyle Hidden
 ```
 
-**stop** — dismiss it:
+**stop** — dismiss him until the next session start:
 
 ```powershell
-Get-Process pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 ```
 
 **demo** — same panel plus the control strip: one button per animation, a
@@ -27,21 +36,29 @@ Get-Process pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAc
 checking the animations without waiting for real events:
 
 ```powershell
-Get-Process pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Milliseconds 400
 Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel/scribe_window.py","--demo" -WorkingDirectory "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel" -WindowStyle Hidden
 ```
 
-**status** — report whether it is running and whether its data is fresh:
+**status** — report whether he is up, whether his data is fresh, and whether the
+launch hook has logged any trouble:
 
 ```powershell
-$p = Get-Process pythonw -ErrorAction SilentlyContinue
-if ($p) { "running (pid $($p.Id))" } else { "not running" }
+$b = (Get-Content "$env:USERPROFILE\.claude\scribe-beat" -Raw -ErrorAction SilentlyContinue)
+if ($b) { "heartbeat {0:N1}s ago" -f (([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [double]$b)/1000) } else { "no heartbeat (never started)" }
 $s = Get-Content "$env:USERPROFILE\.claude\scribe-state.json" -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
 if ($s) { "state age {0:N0}s, 7-day {1}%" -f (([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $s.updated_at)/1000), $s.rate_limits.seven_day.used_percentage } else { "no state file yet" }
+Get-Content "$env:USERPROFILE\.claude\scribe-launch.log" -Tail 3 -ErrorAction SilentlyContinue
 ```
+
+A heartbeat older than about six seconds means he is not running.
 
 Notes for you, not for the user:
 
+- `stop` only lasts until the next session start, when the hook summons him
+  again. To keep him away, remove the `scribe-launch.mjs` entry from
+  `SessionStart` in `~/.claude/settings.json`.
 - The panel reads `~/.claude/scribe-state.json`, which the statusline shim writes
   on every redraw. If status reports a stale state, the shim is not wired — check
   that `statusLine.command` in `~/.claude/settings.json` points at

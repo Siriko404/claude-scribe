@@ -46,10 +46,13 @@ FRAMES = HERE / "assets" / "frames"
 CLAUDE_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
 STATE_FILE = CLAUDE_DIR / "scribe-state.json"
 POS_FILE = CLAUDE_DIR / "scribe-window.json"
+LOCK_FILE = CLAUDE_DIR / "scribe.lock"
+BEAT_FILE = CLAUDE_DIR / "scribe-beat"
 
 FPS = 30
 TICK_MS = 1000 // FPS
 STATE_EVERY = 1.0        # seconds between state-file reads
+BEAT_EVERY = 2.0         # seconds between heartbeat writes
 STALE_AFTER = 90.0       # seconds before statusline data counts as cold
 TURN_DEBOUNCE = 1.5      # quiet time before a text-only reply counts as turn end
 
@@ -326,6 +329,7 @@ class ScribePanel:
         self.shown = None
         self.data = {}
         self.next_state_at = 0.0
+        self.next_beat_at = 0.0
         self.roll_up = ROLL_UP
         self.roll_hold = ROLL_HOLD
         self.slots = {}          # item name -> tray position
@@ -801,6 +805,13 @@ class ScribePanel:
     def tick(self):
         try:
             now = time.time()
+            if now >= self.next_beat_at:
+                # The launch hook reads this instead of enumerating processes.
+                try:
+                    BEAT_FILE.write_text(str(int(now * 1000)))
+                except Exception:
+                    pass
+                self.next_beat_at = now + BEAT_EVERY
             if not self.demo:
                 if now >= self.next_state_at:
                     self.read_state()
@@ -866,7 +877,32 @@ class ScribePanel:
             self.root.after(TICK_MS, self.tick)
 
 
+def claim_lock():
+    """One panel at a time, decided by the OS rather than by a timestamp.
+
+    The launch hook checks the heartbeat first, but two sessions starting
+    together both read the same stale beat and both spawn. This is what
+    actually settles it. Windows releases the lock even on a hard kill, so
+    there is no staleness to reason about.
+    """
+    try:
+        import msvcrt
+    except ImportError:
+        return True                       # not Windows; nothing to guard
+    try:
+        handle = open(LOCK_FILE, "w")
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError:
+        return None
+    return handle                         # held open for the life of the process
+
+
 def main():
+    # A screenshot run is a one-off and never contends with a live panel.
+    if "--once" not in sys.argv:
+        lock = claim_lock()      # kept in scope: closing it releases the lock
+        if lock is None:
+            return
     root = tk.Tk()
     root.title("The Scribe")
     ScribePanel(root, demo="--demo" in sys.argv, once="--once" in sys.argv)

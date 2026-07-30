@@ -152,18 +152,39 @@ calls across messages mid-turn, and without the wait that reads as a false
 
 ## Running it
 
-The panel is summoned from inside Claude Code and nowhere else:
+He arrives on his own. `hooks/scribe-launch.mjs` runs on `SessionStart`, so
+opening Claude Code anywhere summons him and nothing else does.
+
+SessionStart fires on startup, resume, clear *and* compact, so the hook runs
+several times a session and has to be idempotent. Two guards, because one is not
+enough:
+
+| Guard | Where | What it stops |
+|---|---|---|
+| heartbeat, refreshed every 2s | `~/.claude/scribe-beat` | spawning a process four times a session just to have it die |
+| exclusive file lock, held for process life | `~/.claude/scribe.lock` | two sessions starting *together*, both reading the same stale beat, both spawning |
+
+The heartbeat alone loses that race — the lock is what actually decides. Windows
+releases it even on a hard kill, so there is no staleness to reason about.
+
+The hook prints nothing, since SessionStart stdout is injected into the session
+context. A detached spawn with its output discarded is invisible when it fails,
+so failures go to `~/.claude/scribe-launch.log` instead.
+
+There is no `SessionEnd` counterpart on purpose: closing one session must not
+kill a panel another session is still feeding.
+
+To drive it by hand:
 
 ```
-/scribe           summon him
-/scribe stop      dismiss him
+/scribe           force a fresh one
+/scribe stop      dismiss him until the next session start
 /scribe demo      control strip: one button per roll, mood and timing sliders
-/scribe status    running? data fresh?
+/scribe status    heartbeat age, data freshness, last launch errors
 ```
 
 The command lives in `commands/scribe.md` and is installed to
-`~/.claude/commands/scribe.md`, so it works from any project. There is no
-double-clickable launcher on purpose.
+`~/.claude/commands/scribe.md`. There is no double-clickable launcher on purpose.
 
 For development there is still `python scribe_window.py [--demo|--once]`, and
 `SCRIBE_POS=60,60` pins it somewhere fixed for screenshots.
@@ -191,3 +212,12 @@ node tools/export-frames.mjs "C:/Non Windows Data/SCE/gm/scribe.gm1" 2
 - On startup the transcript reader seeks to end of file. A panel launched
   mid-session must never replay the backlog as a burst of animations — that is
   covered by the pipeline test, not just by a timestamp guard.
+- `Get-Process` does **not** expose `CommandLine` on Windows PowerShell 5.1; it
+  comes back empty. Anything identifying the panel by its command line has to go
+  through `Get-CimInstance Win32_Process`, or the filter silently matches nothing
+  and a kill takes every `pythonw` on the machine with it.
+- **Two open sessions make him twitchy.** He follows whichever session wrote the
+  statusline last, and `Transcript.follow()` re-primes on every switch, so
+  triggers land in whichever one redrew most recently. He goes quiet rather than
+  crashing. Auto-launch makes this the normal case rather than the edge one; it
+  is not fixed.

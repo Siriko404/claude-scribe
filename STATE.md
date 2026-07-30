@@ -8,8 +8,18 @@ The Scribe is running and committed. Everything below is verified unless the
 Panel, sprites, mood ramp, the three animations, the tomato, the ledger, the
 `/scribe` command and the statusline shim -- all wired and seen working.
 
+He now launches himself from a `SessionStart` hook. Measured, not assumed:
+a cold run spawns exactly one panel and writes a heartbeat; four runs against a
+live panel spawn nothing; two hooks fired simultaneously from cold leave exactly
+one survivor; and a spawn failure does reach the log (`ENOENT` caught inside the
+250ms the hook stays alive for).
+
 ## Open, not yet confirmed
 
+- **The hook has not been proven under a real session start.** Every test above
+  ran the script by hand, which inherits this shell's PATH and CWD. The hook's
+  own environment may differ -- that is the whole reason it logs. Check
+  `~/.claude/scribe-launch.log` after the next restart.
 - **The chat path has only been tested headless.** `Brain.ask()` was exercised
   directly and answers correctly in voice within seven words, but nobody has yet
   typed into the panel entry and watched a reply land on the speech screen. Two
@@ -62,6 +72,19 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
 - **A remembered window position is not clamped** to the primary screen.
   `winfo_screenwidth()` only knows the primary monitor and would drag it back off
   the second one.
+- **A heartbeat cannot make the launch hook idempotent by itself.** Two sessions
+  starting together read the same stale beat and both spawn. The panel takes an
+  exclusive lock on `~/.claude/scribe.lock` and exits if it cannot get it; the
+  heartbeat is only the cheap path that avoids spawning four processes a session
+  to have them die.
+- **`Get-Process` returns an empty `CommandLine` on PowerShell 5.1.** `/scribe`
+  summon filtered on it and so matched nothing -- it never replaced the running
+  panel -- while `stop` had no filter at all and killed every `pythonw` on the
+  machine. Both now go through `Get-CimInstance Win32_Process`.
+- **Two open sessions make him twitchy.** He follows whichever session wrote the
+  statusline last and re-primes the transcript reader on every switch, so
+  triggers land wherever redrew most recently. It degrades to silence, not a
+  crash. Auto-launch makes it the normal case; not fixed.
 - **The brain gets no tools.** Without that he goes and reads the repo when asked
   to fix something; one such question took 45s and timed out mid-tool-call. His
   refusal then leaked the plumbing, so the persona gives him no hands and no

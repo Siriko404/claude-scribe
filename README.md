@@ -90,7 +90,22 @@ the lob collapses and there is only one way to score.
 
 **Miss and it hits your screen.** The pulp sticks to a sheet of glass over the
 whole desktop, sags, and dries off — and he *enjoys* it, so a miss gets the
-pleased roll and a line about your aim. Hitting him gets the scowl.
+pleased roll and a remark about your aim.
+
+**He escalates.** Fifty roasts in three tiers, picked by how many you have
+missed in a row, and a hit puts you back to the start:
+
+| Streak | Tone | |
+|---|---|---|
+| 1–2 | dry | *"Wide, sire. As ever."* |
+| 3–5 | pointed | *"Thrice now. Shall I move closer?"* |
+| 6+ | hopeless | *"I have seen corpses aim better."* |
+
+Landing one earns no credit either — twenty-three deadpan lines for that:
+*"Congratulations. Thou hast struck a servant."* Nothing repeats within the last
+twelve draws, because plain `random.choice` on a pool this size still says the
+same thing twice in a row often enough to spoil it, which is the one thing a
+taunt cannot do.
 
 That sheet is a full-screen topmost window, which would be a disaster if it
 swallowed clicks, so it asks for `WS_EX_TRANSPARENT` by name rather than

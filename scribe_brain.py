@@ -16,6 +16,7 @@ writes. He is a scribe; he is not supposed to be instant.
 """
 
 import queue
+import random
 import subprocess
 import threading
 from collections import deque
@@ -66,15 +67,122 @@ OMENS = {
                "Recorded. It cannot be unwrit, sire."],
     "error": ["Ill tidings from the artificer, sire.",
               "Somewhat hath gone awry, my lord."],
-    "pelted": ["...", "Thou art cruel, my lord.",
-               "Charming, sire. Truly.", "Was that needful, my lord?"],
-    "missed": ["Wide, sire. As ever.",
-               "The wall feareth thee, my lord.",
-               "A fine throw, for a blind man.",
-               "Thy aim honoureth thy house, sire.",
-               "Missed. I am unsurprised, my lord.",
-               "Practise, sire. Thou hast great need."],
 }
+
+# ---------------------------------------------------------------- the tomato
+
+# He is struck, and refuses to grant you the satisfaction.
+PELTED = [
+    "...",
+    "Oh. Well struck, I suppose.",
+    "Aye. Thou hast bested a scribe.",
+    "A great victory, my lord. Truly.",
+    "Bards shall sing of this, sire.",
+    "Thy finest hour, my lord.",
+    "Wondrous. An unarmed man, defeated.",
+    "I yield. To fruit.",
+    "Thy enemies tremble. Somewhere. Perhaps.",
+    "'Tis pulp. I am unmoved, sire.",
+    "Congratulations. Thou hast struck a servant.",
+    "A hit! Summon the chroniclers, sire.",
+    "How brave, my lord. How very brave.",
+    "Was that worth thy morning, sire?",
+    "Thou hast conquered an old man.",
+    "I shall add this to thy triumphs.",
+    "Marvellous. Now I am wet.",
+    "Struck. And still I outrank thee.",
+    "Thy aim improves. Thy manners do not.",
+    "Aye, my lord. Very mature.",
+    "One tomato. Thy greatest campaign, sire.",
+    "Thou art cruel, my lord.",
+    "Was that needful, my lord?",
+]
+
+# And when you miss, he warms to the subject.
+MOCKERY = {
+    "dry": [
+        "Wide, sire. As ever.",
+        "The wall feareth thee, my lord.",
+        "A fine throw, for a blind man.",
+        "Thy aim honoureth thy house, sire.",
+        "Missed. I am unsurprised, my lord.",
+        "Practise, sire. Thou hast great need.",
+        "'Twas never close, my lord.",
+        "The air is struck. Well done.",
+        "Thou hast slain nothing, sire. Again.",
+        "A mighty blow. Against nobody.",
+        "Nay. Not even near, my lord.",
+        "Thy tomato found freedom, sire.",
+        "I felt no breeze, my lord.",
+        "Was that thine attempt, sire?",
+        "The floor thanks thee, my lord.",
+        "Off by a county, sire.",
+        "I shall not flinch for that.",
+    ],
+    "pointed": [
+        "Again? Thou art nothing if consistent.",
+        "Thrice now. Shall I move closer?",
+        "Thy blindness is well documented, sire.",
+        "Perhaps use both hands, my lord.",
+        "I could sleep through this, sire.",
+        "Thy enemies rest easy, my lord.",
+        "A child would have struck me.",
+        "Doth thine eye trouble thee, sire?",
+        "I have aged. Thou hast not improved.",
+        "Shall I paint a target, my lord?",
+        "Thy hand shames thy father, sire.",
+        "Even the wall pities thee now.",
+        "Wondrous. Another tomato wasted, my lord.",
+        "Thou couldst not hit the ground.",
+        "I grow bored of thy failure.",
+        "Try closing one eye. Or both.",
+        "Thy legend groweth, sire. Downward.",
+    ],
+    "hopeless": [
+        "I have seen corpses aim better.",
+        "Thy God hath abandoned thy hand.",
+        "Stop. I beg thee, my lord.",
+        "This is thy talent, then. Missing.",
+        "A blind ox, and drunk besides.",
+        "Thy skill is a rumour, sire.",
+        "Kings have fallen. Thou canst not.",
+        "I shall write this in thy chronicle.",
+        "Thy castle is doomed, my lord.",
+        "Cease. Thou embarrassest the tomato.",
+        "Even thy servants laugh now, sire.",
+        "Thou art the jest of Christendom.",
+        "Thy aim is thy finest failure.",
+        "Give the sling to a goat.",
+        "History shall remember only this, sire.",
+        "I have counted. Thou art hopeless.",
+    ],
+}
+
+
+def mockery(streak):
+    """One miss is dry. Six in a row is a character assassination."""
+    if streak >= 6:
+        return MOCKERY["hopeless"]
+    if streak >= 3:
+        return MOCKERY["pointed"]
+    return MOCKERY["dry"]
+
+
+class Taunts:
+    """Draws without repeating lately, so fifty lines feel like fifty.
+
+    Plain random.choice on a pool this size still says the same thing twice in
+    a row often enough to spoil it -- which is the one thing a taunt cannot do.
+    """
+
+    def __init__(self, memory=12):
+        self.recent = deque(maxlen=memory)
+
+    def pick(self, pool):
+        fresh = [line for line in pool if line not in self.recent]
+        line = random.choice(fresh or pool)
+        self.recent.append(line)
+        return line
 
 
 TYPOGRAPHY = {"—": " - ", "–": "-", "’": "'", "‘": "'",

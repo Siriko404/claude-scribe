@@ -40,7 +40,7 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 
-from scribe_brain import OMENS, Brain
+from scribe_brain import OMENS, PELTED, Brain, Taunts, mockery
 
 HERE = Path(__file__).resolve().parent
 FRAMES = HERE / "assets" / "frames"
@@ -536,6 +536,8 @@ class ScribePanel:
         self.pull = None         # the sling, while you are drawing it back
         self.screen_splats = []  # pulp that never reached him
         self.splatter = Splatter(root)
+        self.taunts = Taunts()
+        self.misses = 0          # consecutive; he gets crueller as it climbs
         self.roll_up = ROLL_UP
         self.roll_hold = ROLL_HOLD
         self.slots = {}          # item name -> tray position
@@ -706,8 +708,9 @@ class ScribePanel:
                 "r": random.uniform(5, 17),
                 "colour": random.choice((TOMATO_SKIN, TOMATO_DARK, TOMATO_LIGHT)),
                 "born": now})
+        self.misses += 1
         # Not say(): that starts the speaking roll, and the point is the smirk.
-        self.speech = random.choice(OMENS["missed"])
+        self.speech = self.taunts.pick(mockery(self.misses))
         self.waiting_since = None
         self.start("pleased")           # your failure is the best of his day
 
@@ -720,6 +723,7 @@ class ScribePanel:
         self.anger_at = now + ANGER_DELAY          # comic beat before the scowl
         self.base_pos = (self.root.winfo_x(), self.root.winfo_y())
         self.pelted_at = now
+        self.misses = 0            # you landed one; the ridicule starts over
 
         for _ in range(11):                        # pulp stuck to his face
             self.splats.append({
@@ -1238,7 +1242,7 @@ class ScribePanel:
             if self.anger_at and now >= self.anger_at:
                 self.start("displeased")
                 self.anger_at = None
-                self.speech = random.choice(OMENS["pelted"])
+                self.speech = self.taunts.pick(PELTED)
 
             reply = self.brain.take()
             if reply:

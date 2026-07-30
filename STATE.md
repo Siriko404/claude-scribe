@@ -101,6 +101,18 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
 - **A centred text block grows both ways as it wraps**, so a long line walked
   into the mood word below it. Words are dropped until the *measured* block
   fits; where it wraps depends on the font, not on a character count.
+- **A full-screen overlay must ask for click-through by name.** The colour key
+  alone is not a guarantee, and a topmost sheet that swallows clicks locks the
+  desktop out. `WS_EX_TRANSPARENT | NOACTIVATE | TOOLWINDOW` are set explicitly
+  and the window is withdrawn whenever nothing is drawn on it, so a mistake
+  cannot outlive the last splat. Bounds come from the virtual screen: this
+  machine's is 3000x1920 at y=-104, so primary-only metrics would be wrong.
+- **The sling had to move off the panel.** Pulling back goes down and left, away
+  from his face and straight off a 540x286 window -- drawn in the panel it was
+  invisible exactly when it mattered. It shares the overlay with the throw.
+- **Launch power was measured, not chosen.** Swept every angle and strength:
+  9.5 needs a 65px pull minimum, 14.0 collapses the high lob into a single
+  solution. 12.5 keeps both arcs and opens up half the sling's range.
 - **The brain gets no tools.** Without that he goes and reads the repo when asked
   to fix something; one such question took 45s and timed out mid-tool-call. His
   refusal then leaked the plumbing, so the persona gives him no hands and no

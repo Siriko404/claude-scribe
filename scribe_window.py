@@ -28,6 +28,7 @@ Run:  scribe.bat                        (detached, no console)
       python scribe_window.py --once    (single frame, for screenshots)
 """
 
+import ctypes
 import json
 import math
 import os
@@ -72,8 +73,17 @@ ROLL_HOLD = 1.15         # seconds frozen on the extreme frame
 # splat is geometry, not art.
 TRAY_H = 46
 ITEM_R = 15
-WINDUP = 0.14            # he gets a moment to see it coming
-THROW_TIME = 0.40        # seconds from tray to face
+# Pull the tomato back and let go. A tap still lobs it straight at him.
+MAX_PULL = 95            # how far back the sling stretches
+MIN_PULL = 10            # below this it counts as a tap, not an aim
+# 12.5 measured against the sweep in tools/: it keeps two distinct solutions --
+# a flat shot and a high lob -- and lets half the sling's range reach him.
+# Above about 14 the lob collapses and there is only one way to land it.
+LAUNCH_POWER = 12.5      # px/s of launch speed per px of pull
+LOB_TIME = 0.50          # flight time a tap solves for
+MAX_FLIGHT = 2.2         # seconds before a stray tomato gives up and lands
+SCREEN_HOLD = 3.5        # how long pulp clings to the glass
+SCREEN_DRY = 2.0
 SQUASH_TIME = 0.10       # flattened against his face before it bursts
 ANGER_DELAY = 0.18       # beat of disbelief before the scowl
 SHAKE_TIME = 0.30
@@ -219,6 +229,78 @@ def clip_line(x0, y0, x1, y1, box):
 
 def spaced(text, gap=" "):
     return gap.join(text)
+
+
+class Splatter:
+    """A sheet of glass over the whole desktop, for tomatoes that miss him.
+
+    The window is keyed transparent so only the pulp is visible, and the
+    extended style is set explicitly rather than relying on the key alone:
+    a full-screen topmost window that is *not* click-through would lock the
+    desktop out, so WS_EX_TRANSPARENT is asked for by name. It is withdrawn
+    whenever there is nothing to draw, so even a mistake here cannot outlive
+    the last splat.
+
+    Bounds come from the virtual screen, not the primary one -- on this machine
+    that is 3000x1920 starting at y=-104, and a primary-only rect would put half
+    the desktop out of reach.
+    """
+
+    KEY = "#ff00fe"          # a magenta nobody paints a tomato with
+
+    def __init__(self, root):
+        self.root = root
+        self.win = None
+        self.canvas = None
+        self.origin = (0, 0)
+
+    def bounds(self):
+        try:
+            user32 = ctypes.windll.user32
+            return tuple(user32.GetSystemMetrics(m) for m in (76, 77, 78, 79))
+        except Exception:
+            return 0, 0, self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+
+    def build(self):
+        x, y, w, h = self.bounds()
+        self.origin = (x, y)
+        win = tk.Toplevel(self.root)
+        win.overrideredirect(True)
+        win.attributes("-topmost", True)
+        win.configure(bg=self.KEY)
+        win.attributes("-transparentcolor", self.KEY)
+        win.geometry(f"{w}x{h}+{x}+{y}")
+        self.canvas = tk.Canvas(win, width=w, height=h, bg=self.KEY,
+                                highlightthickness=0, bd=0)
+        self.canvas.pack()
+        win.update_idletasks()
+        try:
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetAncestor(win.winfo_id(), 2)     # GA_ROOT
+            style = user32.GetWindowLongW(hwnd, -20)         # GWL_EXSTYLE
+            user32.SetWindowLongW(hwnd, -20, style
+                                  | 0x00080000      # LAYERED
+                                  | 0x00000020      # TRANSPARENT -- clicks pass through
+                                  | 0x08000000      # NOACTIVATE  -- never takes focus
+                                  | 0x00000080)     # TOOLWINDOW  -- stays out of alt-tab
+        except Exception:
+            pass
+        self.win = win
+
+    def sheet(self):
+        if self.win is None:
+            self.build()
+        self.win.deiconify()
+        self.win.lift()
+        return self.canvas
+
+    def to_local(self, x, y):
+        return x - self.origin[0], y - self.origin[1]
+
+    def idle(self):
+        if self.win is not None:
+            self.canvas.delete("all")
+            self.win.withdraw()
 
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
@@ -451,6 +533,9 @@ class ScribePanel:
         self.next_state_at = 0.0
         self.next_beat_at = 0.0
         self.numeral = None      # measured once, on the first draw
+        self.pull = None         # the sling, while you are drawing it back
+        self.screen_splats = []  # pulp that never reached him
+        self.splatter = Splatter(root)
         self.roll_up = ROLL_UP
         self.roll_hold = ROLL_HOLD
         self.slots = {}          # item name -> tray position
@@ -534,9 +619,12 @@ class ScribePanel:
 
     # ------------------------------------------------------------------ items
 
-    def draw_tomato(self, x, y, r, tag, tilt=0.0, squash=1.0):
-        """One tomato, from primitives, so it can spin and squash for free."""
-        c = self.canvas
+    def draw_tomato(self, x, y, r, tag, tilt=0.0, squash=1.0, canvas=None):
+        """One tomato, from primitives, so it can spin and squash for free.
+
+        Takes a canvas because a missed throw is drawn on the overlay, not here.
+        """
+        c = canvas or self.canvas
         rx, ry = r * squash, r / squash
         c.create_oval(x - rx, y - ry, x + rx, y + ry, fill=TOMATO_SKIN,
                       outline=TOMATO_DARK, width=1, tags=tag)
@@ -557,8 +645,7 @@ class ScribePanel:
         c.create_rectangle(0, top, width, top + TRAY_H, fill="#171208",
                            outline=C_STONE)
         mid = top + TRAY_H / 2
-        self.slots["tomato"] = (28, mid)
-        self.draw_tomato(28, mid, ITEM_R, "tray")
+        self.slots["tomato"] = (28, mid)   # drawn per frame: it moves when aimed
 
         self.entry = tk.Entry(self.canvas, bg="#241c11", fg=C_PARCH,
                               insertbackground=C_PARCH, relief="flat", bd=0,
@@ -572,14 +659,57 @@ class ScribePanel:
         self.entry.bind("<Button-1>", lambda _e: (self.root.focus_force(),
                                                   self.entry.focus_set()))
 
-    def throw(self, _name="tomato"):
-        """Wind up, arc, then burst. The scowl lands a beat after the tomato."""
+    def face_rect(self):
+        """His head, in screen coordinates -- what the tomato has to hit."""
+        ox, oy = self.root.winfo_x(), self.root.winfo_y()
+        return (ox + self.SPRITE_X + 22, oy + self.PAD + 12,
+                ox + self.SPRITE_X + self.SPRITE - 22, oy + self.PAD + self.SPRITE - 20)
+
+    def lob_velocity(self):
+        """Solve the arc that drops a tap straight onto his face."""
+        ax, ay = self.slots["tomato"]
+        ox, oy = self.root.winfo_x(), self.root.winfo_y()
+        fx0, fy0, fx1, fy1 = self.face_rect()
+        dx = (fx0 + fx1) / 2 - (ox + ax) + random.uniform(-14, 14)
+        dy = (fy0 + fy1) / 2 - (oy + ay) + random.uniform(-12, 12)
+        return dx / LOB_TIME, (dy - 0.5 * GRAVITY * LOB_TIME ** 2) / LOB_TIME
+
+    def throw(self, velocity=None):
+        """Let it go. Gravity does the rest, and it lands where it lands."""
         if "tomato" not in self.slots or self.flight:
             return
-        self.flight = {"t0": time.time(),
-                       "src": self.slots["tomato"],
-                       "dst": (self.SPRITE_X + 96 + random.randint(-16, 16),
-                               self.PAD + 90 + random.randint(-16, 16))}
+        ax, ay = self.slots["tomato"]
+        vx, vy = velocity if velocity else self.lob_velocity()
+        self.flight = {"x": self.root.winfo_x() + ax, "y": self.root.winfo_y() + ay,
+                       "vx": vx, "vy": vy, "t0": time.time(), "last": time.time(),
+                       "spin": 0.0}
+
+    def path_of(self, vx, vy, span=0.9, step=0.055):
+        """Where a shot would go, sampled for the aiming dots."""
+        ax, ay = self.slots["tomato"]
+        out, x, y, t = [], ax, ay, 0.0
+        while t < span:
+            x += vx * step
+            y += vy * step
+            vy += GRAVITY * step
+            t += step
+            out.append((x, y))
+        return out
+
+    def missed(self, x, y):
+        """It hit the glass instead of him, and he enjoyed that."""
+        now = time.time()
+        for _ in range(13):
+            self.screen_splats.append({
+                "x": x + random.uniform(-30, 30),
+                "y": y + random.uniform(-24, 26),
+                "r": random.uniform(5, 17),
+                "colour": random.choice((TOMATO_SKIN, TOMATO_DARK, TOMATO_LIGHT)),
+                "born": now})
+        # Not say(): that starts the speaking roll, and the point is the smirk.
+        self.speech = random.choice(OMENS["missed"])
+        self.waiting_since = None
+        self.start("pleased")           # your failure is the best of his day
 
     def impact(self, x, y):
         now = time.time()
@@ -615,31 +745,104 @@ class ScribePanel:
                 "colour": random.choice((TOMATO_SKIN, TOMATO_DARK, TOMATO_LIGHT)),
                 "born": now, "last": now})
 
+    def draw_aim(self):
+        """The sling, on the overlay rather than the panel.
+
+        Pulling back goes down and left, away from his face -- straight off a
+        540x286 window. Drawn in the panel it was invisible the moment it
+        mattered, so it goes on the same sheet of glass the throw uses.
+        """
+        sheet = self.splatter.sheet()
+        sheet.delete("aim")
+        ox, oy = self.root.winfo_x(), self.root.winfo_y()
+        ax, ay = self.slots["tomato"]
+        dx, dy = self.pull
+
+        for i, (px, py) in enumerate(self.path_of(-dx * LAUNCH_POWER, -dy * LAUNCH_POWER)):
+            r = 3.4 - i * 0.14
+            if r > 0.7:
+                sx, sy = self.splatter.to_local(ox + px, oy + py)
+                sheet.create_oval(sx - r, sy - r, sx + r, sy + r,
+                                  fill=GOLD_LO if i % 2 else GOLD, outline="",
+                                  tags="aim")
+        bx, by = self.splatter.to_local(ox + ax, oy + ay)
+        sheet.create_line(bx, by, bx + dx, by + dy, fill=TOMATO_DARK, width=2,
+                          tags="aim")
+        reach = math.hypot(dx, dy) / MAX_PULL
+        self.draw_tomato(bx + dx, by + dy, ITEM_R * (1 + 0.12 * reach), "aim",
+                         tilt=reach * 40, squash=1.0 + 0.18 * reach, canvas=sheet)
+
+    def step_flight(self, now):
+        """Advance the tomato through the air and decide what it hit.
+
+        Everything is in screen coordinates, because the throw does not respect
+        the edge of the panel -- a bad one leaves the window entirely.
+        """
+        f = self.flight
+        dt = max(0.0, min(0.05, now - f["last"]))
+        f["last"] = now
+        f["vy"] += GRAVITY * dt
+        f["x"] += f["vx"] * dt
+        f["y"] += f["vy"] * dt
+        f["spin"] += dt * 900
+
+        fx0, fy0, fx1, fy1 = self.face_rect()
+        if fx0 <= f["x"] <= fx1 and fy0 <= f["y"] <= fy1:
+            self.flight = None
+            self.splatter.idle()
+            self.impact(f["x"] - self.root.winfo_x(), f["y"] - self.root.winfo_y())
+            return
+
+        ox, oy, ow, oh = self.splatter.bounds()
+        gone = not (ox <= f["x"] <= ox + ow and f["y"] <= oy + oh)
+        if gone or now - f["t0"] > MAX_FLIGHT:
+            self.flight = None
+            self.missed(min(max(f["x"], ox + 20), ox + ow - 20),
+                        min(max(f["y"], oy + 20), oy + oh - 20))
+            return
+
+        sheet = self.splatter.sheet()
+        sheet.delete("fly")
+        px, py = self.splatter.to_local(f["x"], f["y"])
+        self.draw_tomato(px, py, ITEM_R, "fly", tilt=f["spin"], squash=1.15,
+                         canvas=sheet)
+
+    def draw_screen_splats(self, now):
+        """Pulp on the glass. It clings, sags, then dries off."""
+        if not self.screen_splats:
+            # The sheet also carries the sling and the shot; only put it away
+            # when none of the three want it.
+            if not self.flight and self.pull is None:
+                self.splatter.idle()
+            return
+        sheet = self.splatter.sheet()
+        sheet.delete("glass")
+        for blob in list(self.screen_splats):
+            age = now - blob["born"]
+            if age > SCREEN_HOLD + SCREEN_DRY:
+                self.screen_splats.remove(blob)
+                continue
+            drying = max(0.0, (age - SCREEN_HOLD) / SCREEN_DRY)
+            r = blob["r"] * (1.0 - drying)
+            sag = min(11.0, age * 3.4)
+            drip = 1.0 + min(1.7, age * 0.45)
+            bx, by = self.splatter.to_local(blob["x"], blob["y"] + sag)
+            sheet.create_oval(bx - r, by - r * drip, bx + r, by + r * drip,
+                              fill=blob["colour"], outline="", tags="glass")
+
     def draw_items(self, now):
         c = self.canvas
         for tag in ("fly", "splat", "chunk"):
             c.delete(tag)
 
+        c.delete("tray")
+        if self.pull is None and not self.flight:
+            self.draw_tomato(*self.slots.get("tomato", (0, 0)), ITEM_R, "tray")
+        elif self.pull is not None:
+            self.draw_aim()
+
         if self.flight:
-            e = now - self.flight["t0"]
-            sx, sy = self.flight["src"]
-            dx, dy = self.flight["dst"]
-            if e < WINDUP:                          # anticipation: rear back
-                w = e / WINDUP
-                self.draw_tomato(sx - 6 * w + random.uniform(-1, 1),
-                                 sy - 4 * w + random.uniform(-1, 1),
-                                 ITEM_R * (1 + 0.35 * w), "fly", tilt=-30 * w)
-            else:
-                p = (e - WINDUP) / THROW_TIME
-                if p >= 1.0:
-                    self.impact(dx, dy)
-                    self.flight = None
-                else:
-                    x = sx + (dx - sx) * p
-                    y = sy + (dy - sy) * p - 80 * math.sin(math.pi * p)
-                    stretch = 1.0 + 0.25 * math.sin(math.pi * p)
-                    self.draw_tomato(x, y, ITEM_R, "fly", tilt=p * 1080,
-                                     squash=stretch)
+            self.step_flight(now)
 
         if now < self.squash_until:                 # flattened on his face
             x, y = self.squash_at
@@ -718,25 +921,43 @@ class ScribePanel:
     # ----------------------------------------------------------------- window
 
     def grab(self, event):
-        self.drag = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
         self.pressed_at = (event.x_root, event.y_root)
         self.pressed_face = (self.SPRITE_X <= event.x < self.SPRITE_X + self.SPRITE
                              and event.y < self.PAD + self.SPRITE)
         self.armed = self.item_at(event.x, event.y)
+        # Pressing the tomato draws the sling; pressing anywhere else drags the
+        # panel. Doing both at once would move the window as you took aim.
+        self.pull = (0.0, 0.0) if self.armed else None
+        self.drag = None if self.armed else (event.x_root - self.root.winfo_x(),
+                                             event.y_root - self.root.winfo_y())
 
     def move(self, event):
-        if self.drag:
+        if self.pull is not None:
+            ax, ay = self.slots["tomato"]
+            dx, dy = event.x - ax, event.y - ay
+            reach = math.hypot(dx, dy)
+            if reach > MAX_PULL:                    # the sling only stretches so far
+                dx, dy = dx * MAX_PULL / reach, dy * MAX_PULL / reach
+            self.pull = (dx, dy)
+        elif self.drag:
             self.root.geometry(f"+{event.x_root - self.drag[0]}+{event.y_root - self.drag[1]}")
 
     def release(self, event):
         moved = max(abs(event.x_root - self.pressed_at[0]),
                     abs(event.y_root - self.pressed_at[1])) if self.pressed_at else 99
-        if self.armed and moved < 6:
-            self.throw(self.armed)
+        if self.pull is not None:
+            dx, dy = self.pull
+            if math.hypot(dx, dy) >= MIN_PULL:
+                self.throw((-dx * LAUNCH_POWER, -dy * LAUNCH_POWER))
+            else:
+                self.throw()                # a tap still lobs it straight at him
         elif self.pressed_face and moved < 4:
-            self.start("displeased")    # poked in the face
+            self.start("displeased")        # poked in the face
         self.armed = None
+        self.pull = None
         self.drag = None
+        if self.splatter.canvas is not None:
+            self.splatter.canvas.delete("aim")
         try:
             POS_FILE.write_text(json.dumps({"x": self.root.winfo_x(), "y": self.root.winfo_y()}))
         except Exception:
@@ -1012,6 +1233,7 @@ class ScribePanel:
                 frame = MOOD[0] + self.mood_step()
 
             self.draw_items(now)
+            self.draw_screen_splats(now)
 
             if self.anger_at and now >= self.anger_at:
                 self.start("displeased")

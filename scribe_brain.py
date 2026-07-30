@@ -68,6 +68,12 @@ OMENS = {
               "Somewhat hath gone awry, my lord."],
     "pelted": ["...", "Thou art cruel, my lord.",
                "Charming, sire. Truly.", "Was that needful, my lord?"],
+    "missed": ["Wide, sire. As ever.",
+               "The wall feareth thee, my lord.",
+               "A fine throw, for a blind man.",
+               "Thy aim honoureth thy house, sire.",
+               "Missed. I am unsurprised, my lord.",
+               "Practise, sire. Thou hast great need."],
 }
 
 

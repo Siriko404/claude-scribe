@@ -79,7 +79,27 @@ it is a list of misses.
 
 ## The tomato
 
-The tray under him holds one tomato. Click it:
+The tray under him holds one tomato. **Drag it back and let go** — the sling
+stretches to 95px, the dotted arc shows where it lands, and gravity does the
+rest. A plain click still lobs it straight at his face.
+
+Two ways to land it, a flat shot and a high lob, which is why the launch power
+is 12.5 px/s per px of pull: swept across every angle and strength, that keeps
+both solutions alive and lets half the sling's range reach him. Past about 14
+the lob collapses and there is only one way to score.
+
+**Miss and it hits your screen.** The pulp sticks to a sheet of glass over the
+whole desktop, sags, and dries off — and he *enjoys* it, so a miss gets the
+pleased roll and a line about your aim. Hitting him gets the scowl.
+
+That sheet is a full-screen topmost window, which would be a disaster if it
+swallowed clicks, so it asks for `WS_EX_TRANSPARENT` by name rather than
+trusting the colour key, never activates, stays out of alt-tab, and is withdrawn
+the moment there is nothing left to draw. Its bounds come from the *virtual*
+screen — on the machine this was built on that is 3000x1920 starting at y=-104,
+and a primary-only rect would put half the desktop out of reach.
+
+A direct hit still plays out on his face:
 
 | Beat | |
 |---|---|

@@ -247,8 +247,9 @@ For development there is still `python scribe_window.py [--demo|--once]`, and
 
 ## Notes
 
-- `assets/frames/*.png` are decoded from your own installed copy of the game.
-  They stay local — don't publish them.
+- **The sprites are not in this repository and must not be redistributed from
+  it.** `assets/frames/*.png` are decoded from your own installed copy of the
+  game and stay local; the MIT licence covers the code here and nothing else.
 - Compaction is **not** detected: no `compact_boundary` record was ever observed
   in a real transcript, so there's no regex guessing at one.
 - No "5-hour reset" trigger either — the state file only updates while the

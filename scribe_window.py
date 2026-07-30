@@ -31,6 +31,7 @@ Run:  scribe.bat                        (detached, no console)
 import json
 import math
 import os
+import random
 import re
 import sys
 import time
@@ -58,6 +59,30 @@ DISPLEASED = (33, 43)
 ROLL_UP = 1.0            # seconds to roll up the sequence (eased)
 ROLL_HOLD = 1.15         # seconds frozen on the extreme frame
 # Both are the original 1.3 / 1.5 feel run 1.3x faster; whole roll is 3.15s.
+
+# Things to throw at him. Drawn with canvas primitives rather than sprite sheets:
+# a generative model cannot hold a shape steady across frames (it returned this
+# project's own sheet at 0.33x with half the grid rescaled), and an arc plus a
+# splat is geometry, not art.
+TRAY_H = 46
+ITEM_R = 15
+WINDUP = 0.14            # he gets a moment to see it coming
+THROW_TIME = 0.40        # seconds from tray to face
+SQUASH_TIME = 0.10       # flattened against his face before it bursts
+ANGER_DELAY = 0.18       # beat of disbelief before the scowl
+SHAKE_TIME = 0.30
+SHAKE_AMP = 8            # pixels the whole panel jolts
+RECOIL_TIME = 0.34       # his head rocks back
+SPLAT_HOLD = 2.6         # seconds the pulp clings on
+SPLAT_DRY = 1.2          # seconds it takes to slide off
+CHUNK_LIFE = 1.4
+GRAVITY = 950.0          # px/s^2 for flying pulp
+
+TOMATO_SKIN = "#c0392b"
+TOMATO_DARK = "#8e2b20"
+TOMATO_LIGHT = "#e8543f"
+TOMATO_SEED = "#f4d35e"
+TOMATO_LEAF = "#4f7942"
 
 C_EDGE = "#0f0c08"
 C_PANEL = "#20190f"
@@ -301,9 +326,21 @@ class ScribePanel:
         self.next_state_at = 0.0
         self.roll_up = ROLL_UP
         self.roll_hold = ROLL_HOLD
+        self.slots = {}          # item name -> tray position
+        self.flight = None       # item currently in the air
+        self.splats = []         # tomato pulp stuck to him
+        self.chunks = []         # bits that fly off and drop
+        self.armed = None        # item under the cursor when the press began
+        self.squash_until = 0.0  # tomato flattened against his face
+        self.squash_at = (0, 0)
+        self.shake_t0 = None     # panel jolt
+        self.recoil_t0 = None    # his head rocks back
+        self.anger_at = None     # scowl scheduled a beat after impact
+        self.pelted_at = 0.0
+        self.base_pos = None
 
         w = self.PAD * 2 + self.SPRITE + self.LEDGER_W
-        h = self.PAD * 2 + self.SPRITE + (self.CONTROL_H if demo else 0)
+        h = self.PAD * 2 + self.SPRITE + TRAY_H + (self.CONTROL_H if demo else 0)
         root.overrideredirect(True)
         root.attributes("-topmost", True)
         root.configure(bg=C_EDGE)
@@ -326,7 +363,7 @@ class ScribePanel:
             y = root.winfo_screenheight() - h - 120
         root.geometry(f"{w}x{h}+{x}+{y}")
 
-        canvas_h = self.PAD * 2 + self.SPRITE
+        canvas_h = self.PAD * 2 + self.SPRITE + TRAY_H
         self.canvas = tk.Canvas(root, width=w, height=canvas_h, bg=C_EDGE,
                                 highlightthickness=0, bd=0)
         self.canvas.pack(fill="x")
@@ -351,6 +388,8 @@ class ScribePanel:
                                     text="sprites missing\nrun tools/export-frames.mjs",
                                     fill=C_RED, font=("Consolas", 9), justify="center")
 
+        self.build_tray(w, self.PAD * 2 + self.SPRITE)
+
         self.canvas.bind("<Button-1>", self.grab)
         self.canvas.bind("<B1-Motion>", self.move)
         self.canvas.bind("<ButtonRelease-1>", self.release)
@@ -361,10 +400,152 @@ class ScribePanel:
 
     # ---------------------------------------------------------------- window
 
+    # ------------------------------------------------------------------ items
+
+    def draw_tomato(self, x, y, r, tag, tilt=0.0, squash=1.0):
+        """One tomato, from primitives, so it can spin and squash for free."""
+        c = self.canvas
+        rx, ry = r * squash, r / squash
+        c.create_oval(x - rx, y - ry, x + rx, y + ry, fill=TOMATO_SKIN,
+                      outline=TOMATO_DARK, width=1, tags=tag)
+        # highlight rides around the skin as it tumbles
+        hx = x + math.cos(math.radians(tilt - 120)) * r * 0.35
+        hy = y + math.sin(math.radians(tilt - 120)) * r * 0.35
+        c.create_oval(hx - r * 0.26, hy - r * 0.22, hx + r * 0.26, hy + r * 0.22,
+                      fill=TOMATO_LIGHT, outline="", tags=tag)
+        leaf = r * 0.45
+        lx = x + math.cos(math.radians(tilt - 90)) * r * 0.85
+        ly = y + math.sin(math.radians(tilt - 90)) * r * 0.85
+        c.create_polygon(lx, ly, lx - leaf, ly - leaf * 0.6,
+                         lx, ly - leaf * 0.35, lx + leaf, ly - leaf * 0.6,
+                         fill=TOMATO_LEAF, outline="", tags=tag)
+
+    def build_tray(self, width, top):
+        c = self.canvas
+        c.create_rectangle(0, top, width, top + TRAY_H, fill="#171208",
+                           outline=C_STONE)
+        mid = top + TRAY_H / 2
+        self.slots["tomato"] = (34, mid)
+        self.draw_tomato(34, mid, ITEM_R, "tray")
+        c.create_text(60, mid, anchor="w", text="pelt the scribe",
+                      fill=C_DIM, font=("Consolas", 8))
+
+    def throw(self, _name="tomato"):
+        """Wind up, arc, then burst. The scowl lands a beat after the tomato."""
+        if "tomato" not in self.slots or self.flight:
+            return
+        self.flight = {"t0": time.time(),
+                       "src": self.slots["tomato"],
+                       "dst": (self.PAD + 96 + random.randint(-16, 16),
+                               self.PAD + 90 + random.randint(-16, 16))}
+
+    def impact(self, x, y):
+        now = time.time()
+        self.squash_until = now + SQUASH_TIME
+        self.squash_at = (x, y)
+        self.shake_t0 = now
+        self.recoil_t0 = now
+        self.anger_at = now + ANGER_DELAY          # comic beat before the scowl
+        self.base_pos = (self.root.winfo_x(), self.root.winfo_y())
+        self.pelted_at = now
+
+        for _ in range(11):                        # pulp stuck to his face
+            self.splats.append({
+                "x": x + random.uniform(-36, 36),
+                "y": y + random.uniform(-28, 32),
+                "r": random.uniform(5, 16),
+                "colour": random.choice((TOMATO_SKIN, TOMATO_DARK, TOMATO_LIGHT)),
+                "born": now})
+        for _ in range(4):                         # seeds
+            self.splats.append({
+                "x": x + random.uniform(-22, 22),
+                "y": y + random.uniform(-16, 16),
+                "r": random.uniform(1.5, 2.6),
+                "colour": TOMATO_SEED, "born": now})
+        for _ in range(9):                         # bits that fly off and drop
+            angle = random.uniform(math.pi, 2 * math.pi)
+            speed = random.uniform(90, 260)
+            self.chunks.append({
+                "x": x, "y": y,
+                "vx": math.cos(angle) * speed,
+                "vy": math.sin(angle) * speed,
+                "r": random.uniform(2.5, 6),
+                "colour": random.choice((TOMATO_SKIN, TOMATO_DARK, TOMATO_LIGHT)),
+                "born": now, "last": now})
+
+    def draw_items(self, now):
+        c = self.canvas
+        for tag in ("fly", "splat", "chunk"):
+            c.delete(tag)
+
+        if self.flight:
+            e = now - self.flight["t0"]
+            sx, sy = self.flight["src"]
+            dx, dy = self.flight["dst"]
+            if e < WINDUP:                          # anticipation: rear back
+                w = e / WINDUP
+                self.draw_tomato(sx - 6 * w + random.uniform(-1, 1),
+                                 sy - 4 * w + random.uniform(-1, 1),
+                                 ITEM_R * (1 + 0.35 * w), "fly", tilt=-30 * w)
+            else:
+                p = (e - WINDUP) / THROW_TIME
+                if p >= 1.0:
+                    self.impact(dx, dy)
+                    self.flight = None
+                else:
+                    x = sx + (dx - sx) * p
+                    y = sy + (dy - sy) * p - 80 * math.sin(math.pi * p)
+                    stretch = 1.0 + 0.25 * math.sin(math.pi * p)
+                    self.draw_tomato(x, y, ITEM_R, "fly", tilt=p * 1080,
+                                     squash=stretch)
+
+        if now < self.squash_until:                 # flattened on his face
+            x, y = self.squash_at
+            k = 1 - (self.squash_until - now) / SQUASH_TIME
+            self.draw_tomato(x, y, ITEM_R * (1 + 0.5 * k), "fly",
+                             squash=1.9 + k)
+
+        for chunk in list(self.chunks):
+            age = now - chunk["born"]
+            if age > CHUNK_LIFE or chunk["y"] > 4000:
+                self.chunks.remove(chunk)
+                continue
+            dt = max(0.0, min(0.1, now - chunk["last"]))
+            chunk["last"] = now
+            chunk["vy"] += GRAVITY * dt
+            chunk["x"] += chunk["vx"] * dt
+            chunk["y"] += chunk["vy"] * dt
+            r = chunk["r"]
+            c.create_oval(chunk["x"] - r, chunk["y"] - r,
+                          chunk["x"] + r, chunk["y"] + r,
+                          fill=chunk["colour"], outline="", tags="chunk")
+
+        for blob in list(self.splats):
+            age = now - blob["born"]
+            if age > SPLAT_HOLD + SPLAT_DRY:
+                self.splats.remove(blob)
+                continue
+            drying = max(0.0, (age - SPLAT_HOLD) / SPLAT_DRY)
+            r = blob["r"] * (1.0 - drying)
+            sag = min(9.0, age * 3.0)               # pulp creeps down his face
+            drip = 1.0 + min(1.6, age * 0.5)        # and stretches as it goes
+            c.create_oval(blob["x"] - r, blob["y"] - r * drip + sag,
+                          blob["x"] + r, blob["y"] + r * drip + sag,
+                          fill=blob["colour"], outline="", tags="splat")
+
+    def item_at(self, x, y):
+        for name, (ix, iy) in self.slots.items():
+            if abs(x - ix) <= ITEM_R + 5 and abs(y - iy) <= ITEM_R + 5:
+                return name
+        return None
+
+    # ----------------------------------------------------------------- window
+
     def grab(self, event):
         self.drag = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
         self.pressed_at = (event.x_root, event.y_root)
         self.pressed_face = (event.x < self.PAD + self.SPRITE and event.y < self.PAD + self.SPRITE)
+        self.armed = self.item_at(event.x, event.y)
 
     def move(self, event):
         if self.drag:
@@ -373,8 +554,11 @@ class ScribePanel:
     def release(self, event):
         moved = max(abs(event.x_root - self.pressed_at[0]),
                     abs(event.y_root - self.pressed_at[1])) if self.pressed_at else 99
-        if self.pressed_face and moved < 4:
+        if self.armed and moved < 6:
+            self.throw(self.armed)
+        elif self.pressed_face and moved < 4:
             self.start("displeased")    # poked in the face
+        self.armed = None
         self.drag = None
         try:
             POS_FILE.write_text(json.dumps({"x": self.root.winfo_x(), "y": self.root.winfo_y()}))
@@ -555,6 +739,8 @@ class ScribePanel:
 
         step = self.mood_step()
         word = ROLL_WORDS[self.roll.name] if self.roll else MOOD_WORDS[step]
+        if time.time() - self.pelted_at < 2.0:
+            word = "PELTED"
         ratio = step / (len(MOOD_WORDS) - 1)
         color = C_PARCH if self.roll else (
             C_GREEN if ratio < 0.35 else C_PARCH if ratio < 0.6 else C_AMBER if ratio < 0.85 else C_RED)
@@ -583,6 +769,34 @@ class ScribePanel:
             if frame is None:
                 self.roll = None
                 frame = MOOD[0] + self.mood_step()
+
+            self.draw_items(now)
+
+            if self.anger_at and now >= self.anger_at:
+                self.start("displeased")
+                self.anger_at = None
+
+            # The whole panel jolts, then his head rocks back and settles.
+            if self.shake_t0 is not None and self.base_pos:
+                e = now - self.shake_t0
+                if e > SHAKE_TIME:
+                    self.root.geometry("+%d+%d" % self.base_pos)
+                    self.shake_t0 = None
+                else:
+                    decay = 1.0 - e / SHAKE_TIME
+                    ox = int(SHAKE_AMP * decay * math.sin(e * 58))
+                    oy = int(SHAKE_AMP * 0.6 * decay * math.cos(e * 47))
+                    self.root.geometry("+%d+%d" % (self.base_pos[0] + ox,
+                                                   self.base_pos[1] + oy))
+            if self.recoil_t0 is not None:
+                e = now - self.recoil_t0
+                if e > RECOIL_TIME:
+                    self.canvas.coords(self.sprite, self.PAD, self.PAD)
+                    self.recoil_t0 = None
+                else:
+                    k = (1.0 - e / RECOIL_TIME) ** 2
+                    self.canvas.coords(self.sprite,
+                                       self.PAD + 7 * k, self.PAD + 4 * k)
 
             if frame != self.shown and self.images:
                 self.canvas.itemconfig(self.sprite, image=self.images[frame])

@@ -1,0 +1,8 @@
+{
+  "name": "scribe",
+  "description": "Stronghold Crusader's scribe as a desktop advisor panel for Claude Code: resting face tracks the 7-day limit, animations fire on session events, and you can pelt him with a tomato",
+  "version": "1.0.0",
+  "commands": ["./commands/scribe.md"],
+  "license": "MIT",
+  "keywords": ["statusline", "rate-limits", "hud", "stronghold", "desktop"]
+}

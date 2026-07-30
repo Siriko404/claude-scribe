@@ -28,42 +28,29 @@ step = round(seven_day_used_% / 10)      0 = broad grin ... 10 = stern frown
 | Roll | Frames | Fires on |
 |---|---|---|
 | speaking | 11→21→11 | Claude hands the turn back to you, or you interrupt |
-| pleased | 22→32→22 | a message with real positive heat, or a successful `git commit` |
-| displeased | 33→43→33 | a message with real negative heat, or a tool error |
+| pleased | 22→32→22 | you send a message, or a `git commit` succeeds |
+| displeased | 33→43→33 | you poke his face, a tomato lands, or a tool errors |
 
-## What counts as "heat"
+Every trigger is an event that either happened or it didn't. Message *sentiment*
+was tried and cut: rules for it have unbounded surface area, and three live tests
+in a row each needed a new rule afterwards. That is not a classifier converging,
+it is a list of misses.
 
-Not a keyword list — a list can't tell `good work` from `THIS IS BRILIANT!!`,
-and it will never contain every spelling of every insult. `sentiment.py` scores
-**arousal**: how strongly something was said, not merely what it means.
+## The tomato
 
-```
-arousal = valence x emphasis
+The tray under him holds one tomato. Click it:
 
-valence   VADER's 7,506-term rated lexicon, scored clause by clause so negation
-          cannot leak across punctuation, plus one fuzzy pass so typos land
-emphasis  1 + 0.35 x exclamations + 0.6 x CAPS ratio + 0.25 x elongation
+| Beat | |
+|---|---|
+| 0.00s | wind-up — rears back, swells 35%, jitters |
+| 0.14s | launches, three full tumbles, stretching over the arc |
+| 0.54s | flattens against his face for 0.1s, then bursts |
+| | 15 blobs stick, 9 chunks fly off under gravity, the panel jolts 8px, his head rocks back |
+| 0.72s | *then* the scowl — the beat of disbelief is what makes it land |
+| 0.7–3.8s | pulp creeps down his face, stretching into drips, then dries off |
 
-fires     scorn at <= -2.5
-          praise at >= 3.5, or >= 2.8 when emphasis clears 1.5
-```
-
-Polarity alone is the wrong signal: VADER's own normalised score ranks a flat
-`great` (+0.63) above a shouted `THANK YOU!!!` (+0.52). And the thresholds are
-asymmetric on purpose — praise words turn up in ordinary politeness, insults
-never do.
-
-| | arousal | |
-|---|---|---|
-| `YOU MOTHERFUCKER!` | −7.02 | displeased |
-| `wtf is this garbage` | −2.80 | displeased |
-| `THIS IS BRILIANT!!` | +6.44 | pleased, typo and all |
-| `thank you!!!` | +3.07 | pleased |
-| `great` | +3.10 | silent |
-| `i said i want THAT EXACTLY` | +0.39 | silent |
-
-`great` and `thank you!!!` sit 0.03 apart in arousal, so no single threshold ever
-separates them; the emphasis gate is what does.
+Drawn from canvas primitives, not sprites. A spinning arc and a splat pattern are
+geometry; they never drift and cost nothing.
 
 Each roll is eased up the sequence, frozen on the extreme frame, then eased back
 down onto the resting face:
@@ -99,11 +86,12 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 | File | Role |
 |---|---|
 | `scribe_window.py` | the panel — tkinter, stdlib only |
-| `sentiment.py` | the arousal classifier |
+| `commands/scribe.md` | the `/scribe` slash command, the only way to launch it |
 | `scribe-writer.mjs` | statusline shim: records limits, then renders claude-hud unchanged |
 | `tools/gm1.mjs` | GM1/TGX reader + PNG writer, no dependencies |
 | `tools/export-frames.mjs` | dumps all 44 frames out of `scribe.gm1` |
-| `scribe.bat` | spawns the panel detached via `pythonw` |
+| `tools/upscale-frames.py` | EDSR x4 super-resolution over the frames |
+| `tools/make-sheet.mjs` | contact sheet for an external upscaler, plus `import-sheet.ps1` to cut it back |
 
 ## Where the numbers come from
 
@@ -125,23 +113,21 @@ calls across messages mid-turn, and without the wait that reads as a false
 
 ## Running it
 
-```
-scribe.bat                        # detached, no console
-python scribe_window.py --demo    # buttons + sliders to drive it by hand
-python scribe_window.py --once    # single frame, for screenshots
-SCRIBE_POS=60,60 python scribe_window.py   # fixed position
-```
-
-Demo mode adds a control strip: one button per roll, a 7-day / mood-step slider
-pair (two views of the same number), and live `roll s` / `hold s` timing sliders.
-
-One dependency, for the lexicon:
+The panel is summoned from inside Claude Code and nowhere else:
 
 ```
-python -m pip install vaderSentiment
+/scribe           summon him
+/scribe stop      dismiss him
+/scribe demo      control strip: one button per roll, mood and timing sliders
+/scribe status    running? data fresh?
 ```
 
-If it is missing the panel still runs — it just stops reacting to what you type.
+The command lives in `commands/scribe.md` and is installed to
+`~/.claude/commands/scribe.md`, so it works from any project. There is no
+double-clickable launcher on purpose.
+
+For development there is still `python scribe_window.py [--demo|--once]`, and
+`SCRIBE_POS=60,60` pins it somewhere fixed for screenshots.
 
 Re-extract sprites from the local game install:
 
@@ -161,9 +147,8 @@ node tools/export-frames.mjs "C:/Non Windows Data/SCE/gm/scribe.gm1" 2
   terminal is redrawing, so a reset can't be observed reliably.
 - A remembered window position is trusted as-is rather than clamped to the
   primary screen, which is what lets it live on a second monitor.
-- The panel survives a missing state file, missing transcript, missing sprites
-  and a missing classifier; a render error prints inside the panel instead of
-  killing it.
+- The panel survives a missing state file, missing transcript and missing
+  sprites; a render error prints inside the panel instead of killing it.
 - On startup the transcript reader seeks to end of file. A panel launched
   mid-session must never replay the backlog as a burst of animations — that is
   covered by the pipeline test, not just by a timestamp guard.

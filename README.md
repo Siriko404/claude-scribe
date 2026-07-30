@@ -184,10 +184,8 @@ kill a panel another session is still feeding.
 To drive it by hand:
 
 ```
-/scribe           force a fresh one
-/scribe stop      dismiss him until the next session start
-/scribe demo      control strip: one button per roll, mood and timing sliders
-/scribe status    heartbeat age, data freshness, last launch errors
+/scribe open      force a fresh one   (also the default)
+/scribe close     dismiss him until the next session start
 ```
 
 The command lives in `commands/scribe.md` and is installed to
@@ -244,8 +242,10 @@ to its directory. Without that it prints a plain line of its own.
 **Restart Claude Code.** He appears on his own; the statusline starts feeding him
 on the first redraw.
 
-For development there is still `python scribe_window.py [--demo|--once]`, and
-`SCRIBE_POS=60,60` pins it somewhere fixed for screenshots.
+Those two are the whole command. For development there is still
+`python scribe_window.py [--demo|--once]` -- `--demo` adds a control strip with
+one button per roll and mood and timing sliders -- and `SCRIBE_POS=60,60` pins
+the panel somewhere fixed for screenshots.
 
 ## Notes
 

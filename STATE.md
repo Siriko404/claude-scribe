@@ -35,7 +35,8 @@ Stronghold Crusader's scribe as an always-on-top desktop panel for Claude Code.
 His resting face tracks the 7-day rate limit, session events animate him, you can
 type to him and he answers in the old tongue, and you can throw a tomato at him.
 
-Launched only from inside Claude Code: `/scribe` (start / stop / demo / status).
+Opened by a SessionStart hook. `/scribe open` and `/scribe close` force the
+issue; those two are the whole command.
 
 ## Architecture
 

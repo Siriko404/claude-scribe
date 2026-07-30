@@ -15,8 +15,13 @@ import { readGm1, writePng } from './gm1.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, '..', 'assets', 'upscale');
-const GM1 = process.argv[2] || 'C:/Non Windows Data/SCE/gm/scribe.gm1';
+const GM1 = process.argv[2];
 const SCALE = Number(process.argv[3] || 1);
+
+if (!GM1) {
+  console.error('usage: node tools/make-sheet.mjs <path to gm/scribe.gm1> [scale]');
+  process.exit(1);
+}
 
 const COLS = 8;
 const ROWS = 6;

@@ -191,16 +191,59 @@ To drive it by hand:
 The command lives in `commands/scribe.md` and is installed to
 `~/.claude/commands/scribe.md`. There is no double-clickable launcher on purpose.
 
+Nothing in that command file hardcodes a path. The hook writes the checkout
+location to `~/.claude/scribe-home` every session start, and the command reads
+it, so moving the checkout is picked up on the next start.
+
+## Installing
+
+Windows, Python 3 with tkinter (the standard installer includes it), Node 18+,
+and your own copy of Stronghold Crusader. Two of the three steps need the
+checkout's absolute path — the third and everything after it do not.
+
+**1. Cut the sprites out of your game files.** They are not in this repository
+and must not be redistributed from it.
+
+```
+node tools/export-frames.mjs "<your install>/gm/scribe.gm1" 2
+```
+
+For a sharper face, download `EDSR_x4.pb` from
+[Saafke/EDSR_Tensorflow](https://github.com/Saafke/EDSR_Tensorflow) and run
+`python tools/upscale-frames.py --model EDSR_x4.pb --scale 4` instead of
+passing `2` above.
+
+**2. Wire the two entries in `~/.claude/settings.json`.** The hook summons him;
+the statusline shim is the only way rate limits can reach him at all.
+
+```jsonc
+"hooks": {
+  "SessionStart": [
+    { "hooks": [ {
+        "type": "command",
+        "command": "node \"<checkout>/hooks/scribe-launch.mjs\"",
+        "timeout": 5
+    } ] }
+  ]
+},
+"statusLine": {
+  "type": "command",
+  "command": "node \"<checkout>/scribe-writer.mjs\""
+}
+```
+
+If you already have a statusline you like, `scribe-writer.mjs` records the
+limits and then renders whatever you had before, unchanged — set `SCRIBE_HUD_DIR`
+to its directory. Without that it prints a plain line of its own.
+
+**3. Install the slash command:** copy `commands/scribe.md` to
+`~/.claude/commands/scribe.md`.
+
+**Restart Claude Code.** He appears on his own; the statusline starts feeding him
+on the first redraw.
+
 For development there is still `python scribe_window.py [--demo|--once]`, and
 `SCRIBE_POS=60,60` pins it somewhere fixed for screenshots.
-
-Re-extract sprites from the local game install:
-
-```
-node tools/export-frames.mjs "C:/Non Windows Data/SCE/gm/scribe.gm1" 2
-```
-
-**Restart Claude Code** once, so the statusline shim starts writing state.
 
 ## Notes
 

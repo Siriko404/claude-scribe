@@ -18,8 +18,13 @@ import { readGm1, writePng } from './gm1.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, '..', 'assets', 'frames');
-const GM1 = process.argv[2] || 'C:/Non Windows Data/SCE/gm/scribe.gm1';
+const GM1 = process.argv[2];
 const SCALE = Number(process.argv[3] || 2);
+
+if (!GM1) {
+  console.error('usage: node tools/export-frames.mjs <path to gm/scribe.gm1> [scale]');
+  process.exit(1);
+}
 
 function upscale(img, z) {
   const W = img.width * z, H = img.height * z;

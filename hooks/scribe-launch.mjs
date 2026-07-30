@@ -15,7 +15,9 @@
  */
 
 import { spawn } from "node:child_process";
-import { appendFileSync, existsSync, readFileSync, statSync, truncateSync } from "node:fs";
+import {
+  appendFileSync, existsSync, readFileSync, statSync, truncateSync, writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +26,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PANEL = path.join(HERE, "..", "scribe_window.py");
 const CLAUDE_DIR = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
 const BEAT_FILE = path.join(CLAUDE_DIR, "scribe-beat");
+const HOME_FILE = path.join(CLAUDE_DIR, "scribe-home");
 const LOG_FILE = path.join(CLAUDE_DIR, "scribe-launch.log");
 
 const BEAT_FRESH_MS = 6000;   // three missed beats
@@ -53,6 +56,16 @@ function panelIsUp() {
   } catch {
     return false;
   }
+}
+
+// Where the checkout lives, so nothing downstream has to hardcode it. The hook
+// is the one piece that knows by construction, and it runs before anyone can
+// type /scribe. Written even when the panel is already up, so moving the
+// checkout is picked up on the next session start.
+try {
+  writeFileSync(HOME_FILE, path.resolve(HERE, ".."));
+} catch (err) {
+  note(`could not record home: ${err.message}`);
 }
 
 if (panelIsUp()) process.exit(0);

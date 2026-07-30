@@ -5,26 +5,27 @@ argument-hint: [stop | demo | status]
 
 Manage the Scribe desktop panel. Action requested: $ARGUMENTS (empty means summon).
 
-The panel lives at `C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel`. Run
-the matching PowerShell command, then report the result in one line. Do not
+Run the matching PowerShell command, then report the result in one line. Do not
 explain the panel unless asked.
 
-He is summoned automatically at session start by the `scribe-launch.mjs` hook,
-so these are for when you want to force the issue.
+He is summoned automatically at session start by the `scribe-launch.mjs` hook, so
+these are for forcing the issue. The same hook records where the checkout lives
+in `~/.claude/scribe-home`, which is what `$Root` below reads — nothing here
+hardcodes a path. If that file is missing the hook is not installed, and the fix
+is the `SessionStart` entry described in the README, not a path typed in by hand.
 
-The new panel waits up to two seconds for the old one to release its lock, so
-the kill and the start need no sleep between them.
-
-Every command below identifies him with `Get-CimInstance`. `Get-Process` does
-**not** expose `CommandLine` on Windows PowerShell 5.1 — it comes back empty, so
-filtering on it matches nothing and killing without it kills every `pythonw` on
-the machine.
+Every command identifies him with `Get-CimInstance`. `Get-Process` does **not**
+expose `CommandLine` on Windows PowerShell 5.1 — it comes back empty, so
+filtering on it matches nothing, and killing without it takes every `pythonw` on
+the machine. A new panel waits two seconds for the old one's lock, so the kill
+and the start need no sleep between them.
 
 **summon** (no arguments, or `start`) — replaces any running instance:
 
 ```powershell
+$Root = (Get-Content "$env:USERPROFILE\.claude\scribe-home" -Raw).Trim()
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel/scribe_window.py" -WorkingDirectory "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel" -WindowStyle Hidden
+Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "$Root\scribe_window.py" -WorkingDirectory $Root -WindowStyle Hidden
 ```
 
 **stop** — dismiss him until the next session start:
@@ -38,8 +39,9 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.C
 checking the animations without waiting for real events:
 
 ```powershell
+$Root = (Get-Content "$env:USERPROFILE\.claude\scribe-home" -Raw).Trim()
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel/scribe_window.py","--demo" -WorkingDirectory "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel" -WindowStyle Hidden
+Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "$Root\scribe_window.py","--demo" -WorkingDirectory $Root -WindowStyle Hidden
 ```
 
 **status** — report whether he is up, whether his data is fresh, and whether the
@@ -62,11 +64,10 @@ Notes for you, not for the user:
   `SessionStart` in `~/.claude/settings.json`.
 - The panel reads `~/.claude/scribe-state.json`, which the statusline shim writes
   on every redraw. If status reports a stale state, the shim is not wired — check
-  that `statusLine.command` in `~/.claude/settings.json` points at
-  `scribe-writer.mjs`.
+  that `statusLine.command` in `~/.claude/settings.json` runs `scribe-writer.mjs`.
 - It remembers its own position, including on a second monitor. Never pass
   `SCRIBE_POS` unless the user asks for a specific spot.
 - Sprites are decoded from the user's own game install and are not in the repo.
-  If the panel reports missing sprites, regenerate them:
-  `node tools/export-frames.mjs "C:/Non Windows Data/SCE/gm/scribe.gm1" 1`
-  then `python tools/upscale-frames.py --model <EDSR_x4.pb> --scale 4`.
+  If the panel reports missing sprites, regenerate them with
+  `tools/export-frames.mjs` pointed at their `scribe.gm1`, then
+  `tools/upscale-frames.py`. The README has the exact commands.

@@ -90,6 +90,17 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   statusline last and re-primes the transcript reader on every switch, so
   triggers land wherever redrew most recently. It degrades to silence, not a
   crash. Auto-launch makes it the normal case; not fixed.
+- **Tk cannot anti-alias an arc.** The gauges are drawn four times oversized
+  with a real gradient and shrunk with Lanczos, because stacked `create_arc`
+  calls leave a staircase along the rim that no bezel hides. Bands are built
+  once; a value costs only a pie mask. 4.2ms cached, 6.7ms when the value moves
+  every frame, against a 33.3ms budget. This is why the panel now wants Pillow.
+- **The room inside a half ring is not its inner diameter.** It narrows as you
+  climb, so a numeral's top corners bind, not its width -- "100%" fitted on
+  width alone lands squarely on the band.
+- **A centred text block grows both ways as it wraps**, so a long line walked
+  into the mood word below it. Words are dropped until the *measured* block
+  fits; where it wraps depends on the font, not on a character count.
 - **The brain gets no tools.** Without that he goes and reads the repo when asked
   to fix something; one such question took 45s and timed out mid-tool-call. His
   refusal then leaked the plumbing, so the persona gives him no hands and no

@@ -1,20 +1,23 @@
 # The Scribe
 
-A small always-on-top desktop panel for Claude Code: the game's own hooded
-scribe on the left, his ledger on the right. Frameless, draggable, remembers
-where you put it (including on a second monitor). Right-click or Esc closes it.
+A small always-on-top desktop panel for Claude Code: his ledger on the left,
+the game's own hooded scribe on the right. Frameless, draggable, remembers where
+you put it (including on a second monitor). Right-click or Esc closes it.
 
 ```
 +--------------------------------------------------+
-|                      | THE SCRIBE'S LEDGER        |
-|   [ 220x220 sprite ] | * 7 day  [####----] 11% 2d |
-|                      |   5 hour [###-----] 40%    |
-|                      | -------------------------- |
-|                      | Eleven percent spent across|
-|                      | seven days, sire.          |
-|                      | WATCHFUL                   |
+|  ---   T H E   L E D G E R   ---  |              |
+|      __              __           |              |
+|    /63%\           /12%\          | [ 220x220 ]  |
+|   VII DAYS        V HOURS         |   sprite     |
+|   anew in 2d      anew in 1h      |              |
+|  Sixty-three parts spent, my lord.|              |
+|      R E A D I N G   A L O U D    |              |
 +--------------------------------------------------+
 ```
+
+Art deco, set in Times: two half-circle gauges struck in gold, his last words
+below them, his humour under that. The gauges turn iron-red past 80%.
 
 ## Talking to him
 
@@ -123,7 +126,7 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 
 | File | Role |
 |---|---|
-| `scribe_window.py` | the panel — tkinter, stdlib only |
+| `scribe_window.py` | the panel — tkinter, plus Pillow for the gauges |
 | `scribe_brain.py` | his voice, memory and the Haiku call |
 | `hooks/scribe-launch.mjs` | SessionStart hook: summons him, records where the checkout lives |
 | `commands/scribe.md` | the `/scribe` slash command, for forcing the issue by hand |
@@ -132,6 +135,7 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 | `tools/export-frames.mjs` | dumps all 44 frames out of `scribe.gm1` |
 | `tools/upscale-frames.py` | EDSR x4 super-resolution over the frames |
 | `tools/make-sheet.mjs` | contact sheet for an external upscaler, plus `import-sheet.ps1` to cut it back |
+| `tools/ledger-samples.py` | renders the ledger in all seven of its states |
 
 ## Where the numbers come from
 
@@ -197,8 +201,10 @@ it, so moving the checkout is picked up on the next start.
 
 ## Installing
 
-Windows, Python 3 with tkinter (the standard installer includes it), Node 18+,
-and your own copy of Stronghold Crusader. Two of the three steps need the
+Windows, Python 3 with tkinter (the standard installer includes it), Pillow
+(`pip install pillow` -- the gauges are drawn oversized and shrunk down, which
+Tk cannot do; without it they fall back to flat arcs), Node 18+, and your own
+copy of Stronghold Crusader. Two of the three steps need the
 checkout's absolute path — the third and everything after it do not.
 
 **1. Cut the sprites out of your game files.** They are not in this repository

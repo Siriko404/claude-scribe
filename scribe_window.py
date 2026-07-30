@@ -105,6 +105,121 @@ ROLL_WORDS = {"speak": "READING ALOUD", "pleased": "WELL PLEASED", "displeased":
 
 COMMITTED = re.compile(r"^\[[^\]\s]+ [0-9a-f]{7,}\]", re.M)
 
+# --------------------------------------------------------------- the ledger
+
+# Aged gold on near-black, set in Times. Deco reads as metal, so a band needs a
+# dark rim, a specular line a third of the way in, and a dark rim again.
+GROUND = "#0a0908"
+GOLD_HI, GOLD, GOLD_LO = "#f6e6b4", "#c9a227", "#4a3a14"
+RAY, IVORY, GHOST = "#141109", "#e8dfc8", "#5d523c"
+ALARM_HI = "#f0a89a"
+
+TIMES = "Times New Roman"
+
+# The rings are drawn four times oversized and shrunk down, because Tk cannot
+# anti-alias an arc: stacking create_arc calls leaves a staircase along the rim
+# that no bezel hides. Off the canvas there is room for a real gradient too,
+# which is what makes the band read as struck metal rather than a coloured
+# stripe. Bands are built once; a value costs only a pie mask.
+SS = 4
+R_OUT, R_IN = 54, 40
+BAND_W, BAND_H = R_OUT * 2 + 6, R_OUT + 6
+
+METAL = {
+    "gold": [(0.00, "#3d3010"), (0.16, "#a5811f"), (0.34, "#fff4c8"),
+             (0.55, "#c9a227"), (0.82, "#7d6019"), (1.00, "#302509")],
+    "alarm": [(0.00, "#3f120c"), (0.16, "#993526"), (0.34, "#ffd8cd"),
+              (0.55, "#c04630"), (0.82, "#7a2519"), (1.00, "#2c0d08")],
+    "track": [(0.00, "#14100a"), (0.30, "#2a2211"), (0.60, "#241d0e"),
+              (1.00, "#100d07")],
+}
+
+try:
+    from PIL import Image, ImageChops, ImageDraw, ImageTk
+    HAVE_PIL = True
+except ImportError:          # the panel still runs, the rings are just flat
+    HAVE_PIL = False
+
+_bands, _rings = {}, {}
+
+
+def hexrgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def lerp(a, b, t):
+    ra, ga, ba = hexrgb(a)
+    rb, gb, bb = hexrgb(b)
+    return "#%02x%02x%02x" % (int(ra + (rb - ra) * t), int(ga + (gb - ga) * t),
+                              int(ba + (bb - ba) * t))
+
+
+def gradient(stops, t):
+    for i in range(len(stops) - 1):
+        (s0, c0), (s1, c1) = stops[i], stops[i + 1]
+        if s0 <= t <= s1:
+            return lerp(c0, c1, (t - s0) / (s1 - s0) if s1 > s0 else 0.0)
+    return stops[-1][1]
+
+
+def band(key):
+    if key not in _bands:
+        big = Image.new("RGBA", (BAND_W * SS, BAND_H * SS), (0, 0, 0, 0))
+        pen = ImageDraw.Draw(big)
+        cx, cy = BAND_W * SS // 2, (R_OUT + 3) * SS
+        steps = (R_OUT - R_IN) * SS
+        for i in range(steps):
+            r = R_OUT * SS - i
+            pen.arc([cx - r, cy - r, cx + r, cy + r], 180, 360,
+                    fill=hexrgb(gradient(METAL[key], i / float(steps - 1))) + (255,),
+                    width=2)
+        _bands[key] = big.resize((BAND_W, BAND_H), Image.LANCZOS)
+    return _bands[key]
+
+
+def ring_image(value, key):
+    slot = (value, key)
+    if slot not in _rings:
+        img = band("track").copy()
+        if value:
+            sweep = max(2.5, 180.0 * value / 100.0)   # one percent still reads
+            mask = Image.new("L", (BAND_W * SS, BAND_H * SS), 0)
+            far = (R_OUT + 3) * SS + R_OUT * SS
+            ImageDraw.Draw(mask).pieslice([3 * SS, 3 * SS, far, far],
+                                          180, 180 + sweep, fill=255)
+            mask = mask.resize((BAND_W, BAND_H), Image.LANCZOS)
+            lit = band(key)
+            img.paste(lit, (0, 0), ImageChops.multiply(lit.split()[3], mask))
+        _rings[slot] = ImageTk.PhotoImage(img)        # the dict keeps it alive
+    return _rings[slot]
+
+
+def clip_line(x0, y0, x1, y1, box):
+    """Liang-Barsky. The canvas has no clipping region, so the sunburst has to
+    be cut to the panel by hand, or its rays cross the window onto his face."""
+    xmin, ymin, xmax, ymax = box
+    dx, dy = x1 - x0, y1 - y0
+    t0, t1 = 0.0, 1.0
+    for p, q in ((-dx, x0 - xmin), (dx, xmax - x0), (-dy, y0 - ymin), (dy, ymax - y0)):
+        if p == 0:
+            if q < 0:
+                return None
+        else:
+            r = q / p
+            if p < 0:
+                if r > t1:
+                    return None
+                t0 = max(t0, r)
+            else:
+                if r < t0:
+                    return None
+                t1 = min(t1, r)
+    return x0 + t0 * dx, y0 + t0 * dy, x0 + t1 * dx, y0 + t1 * dy
+
+
+def spaced(text, gap=" "):
+    return gap.join(text)
+
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
@@ -316,6 +431,10 @@ class ScribePanel:
     SPRITE = 220
     LEDGER_W = 300
     PAD = 10
+    # The ledger takes the left, he takes the right, with an equal margin either side.
+    LEDGER_INNER = LEDGER_W - PAD
+    LEDGER_X = PAD
+    SPRITE_X = PAD * 2 + LEDGER_INNER
     CONTROL_H = 116
 
     def __init__(self, root, demo=False, once=False):
@@ -331,6 +450,7 @@ class ScribePanel:
         self.data = {}
         self.next_state_at = 0.0
         self.next_beat_at = 0.0
+        self.numeral = None      # measured once, on the first draw
         self.roll_up = ROLL_UP
         self.roll_hold = ROLL_HOLD
         self.slots = {}          # item name -> tray position
@@ -390,12 +510,13 @@ class ScribePanel:
 
         self.canvas.create_rectangle(0, 0, w - 1, h - 1, fill=C_PANEL, outline=C_STONE)
         self.canvas.create_rectangle(2, 2, w - 3, h - 3, outline="#4b3c26")
-        self.canvas.create_rectangle(self.PAD - 1, self.PAD - 1,
-                                     self.PAD + self.SPRITE, self.PAD + self.SPRITE,
+        self.canvas.create_rectangle(self.SPRITE_X - 1, self.PAD - 1,
+                                     self.SPRITE_X + self.SPRITE, self.PAD + self.SPRITE,
                                      fill="#120d07", outline=C_STONE)
-        self.sprite = self.canvas.create_image(self.PAD, self.PAD, anchor="nw")
+        self.sprite = self.canvas.create_image(self.SPRITE_X, self.PAD, anchor="nw")
         if not self.images:
-            self.canvas.create_text(self.PAD + self.SPRITE / 2, self.PAD + self.SPRITE / 2,
+            self.canvas.create_text(self.SPRITE_X + self.SPRITE / 2,
+                                    self.PAD + self.SPRITE / 2,
                                     text="sprites missing\nrun tools/export-frames.mjs",
                                     fill=C_RED, font=("Consolas", 9), justify="center")
 
@@ -457,7 +578,7 @@ class ScribePanel:
             return
         self.flight = {"t0": time.time(),
                        "src": self.slots["tomato"],
-                       "dst": (self.PAD + 96 + random.randint(-16, 16),
+                       "dst": (self.SPRITE_X + 96 + random.randint(-16, 16),
                                self.PAD + 90 + random.randint(-16, 16))}
 
     def impact(self, x, y):
@@ -599,7 +720,8 @@ class ScribePanel:
     def grab(self, event):
         self.drag = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
         self.pressed_at = (event.x_root, event.y_root)
-        self.pressed_face = (event.x < self.PAD + self.SPRITE and event.y < self.PAD + self.SPRITE)
+        self.pressed_face = (self.SPRITE_X <= event.x < self.SPRITE_X + self.SPRITE
+                             and event.y < self.PAD + self.SPRITE)
         self.armed = self.item_at(event.x, event.y)
 
     def move(self, event):
@@ -738,70 +860,131 @@ class ScribePanel:
 
     # ---------------------------------------------------------------- render
 
-    def bar(self, x, y, w, h, value, stale):
-        self.canvas.create_rectangle(x, y, x + w, y + h, fill="#171208",
-                                     outline=C_STONE, tags="ledger")
-        if value is None:
-            self.canvas.create_text(x + w / 2, y + h / 2, text="no data",
-                                    fill=C_DIM, font=("Consolas", 7), tags="ledger")
+    def dial(self, cx, cy, value, alarmed):
+        """A half-circle gauge. Falls back to a flat arc without Pillow rather
+        than refusing to draw -- the panel is still readable, just not struck."""
+        c = self.canvas
+        pct = None if value is None else max(0, min(100, int(round(value))))
+        if HAVE_PIL:
+            c.create_image(cx, cy + 3, anchor="s", tags="ledger",
+                           image=ring_image(pct, "alarm" if alarmed else "gold"))
             return
-        color = C_DIM if stale else C_RED if value >= 80 else C_AMBER if value >= 55 else C_GREEN
-        fill_w = int((w - 2) * value / 100)
-        if fill_w > 0:
-            self.canvas.create_rectangle(x + 1, y + 1, x + 1 + fill_w, y + h - 1,
-                                         fill=color, outline="", tags="ledger")
+        for r in range(R_OUT, R_IN, -1):
+            c.create_arc(cx - r, cy - r, cx + r, cy + r, start=180, extent=-180,
+                         style="arc", outline="#241d0e", width=3, tags="ledger")
+        if pct:
+            sweep = min(-2.5, -180.0 * pct / 100.0)
+            for r in range(R_OUT, R_IN, -1):
+                c.create_arc(cx - r, cy - r, cx + r, cy + r, start=180, extent=sweep,
+                             style="arc", outline=C_RED if alarmed else GOLD,
+                             width=3, tags="ledger")
+
+    def numeral_fit(self, sample="100%"):
+        """Largest Times size whose corners still clear the ring's inner circle.
+
+        The room inside a half ring is not its inner diameter -- it narrows as
+        you climb, so the block's top corners bind, not its width. Fitted once
+        against the widest reading and cached, then used for both dials so they
+        never disagree.
+        """
+        if self.numeral is None:
+            c = self.canvas
+            self.numeral = (12, 12)
+            for size in range(24, 11, -1):
+                probe = c.create_text(-900, -900, text=sample, anchor="center",
+                                      font=(TIMES, size, "bold"))
+                x0, y0, x1, y1 = c.bbox(probe)
+                c.delete(probe)
+                half_w, half_h = (x1 - x0) / 2.0, (y1 - y0) / 2.0
+                rise = half_h + 2
+                if math.hypot(half_w, rise + half_h) <= R_IN - 3:
+                    self.numeral = (size, rise)
+                    break
+        return self.numeral
+
+    def fit_text(self, cx, top, width, max_h, text, fill, font):
+        """Drop words until the measured block fits its band.
+
+        A centred text item grows both ways as it wraps, so a long line walked
+        straight into the mood word below. Where it wraps depends on the font,
+        not on a character count, so it has to be measured.
+        """
+        c = self.canvas
+        words = " ".join(text.split()).split(" ")
+        for n in range(len(words), 0, -1):
+            body = " ".join(words[:n]) + ("" if n == len(words) else " ...")
+            item = c.create_text(cx, top, anchor="n", width=width, text=body,
+                                 fill=fill, font=font, justify="center", tags="ledger")
+            x0, y0, x1, y1 = c.bbox(item)
+            if y1 - y0 <= max_h:
+                return
+            c.delete(item)
 
     def draw_ledger(self):
         c = self.canvas
         c.delete("ledger")
         d = self.data
-        lx = self.PAD * 2 + self.SPRITE
-        ly = self.PAD
-        lw = self.LEDGER_W - self.PAD
-        stale = not d.get("fresh")
+        x, y, w, h = self.LEDGER_X, self.PAD, self.LEDGER_INNER, self.SPRITE
+        c.create_rectangle(x, y, x + w, y + h, fill=GROUND, outline=GOLD_LO,
+                           tags="ledger")
 
-        c.create_rectangle(lx, ly, lx + lw, ly + self.SPRITE, fill="#2b2214",
-                           outline=C_STONE, tags="ledger")
-        c.create_text(lx + 10, ly + 12, anchor="w", text="THE SCRIBE'S LEDGER",
-                      fill=C_PARCH, font=("Consolas", 10, "bold"), tags="ledger")
-        c.create_line(lx + 8, ly + 24, lx + lw - 8, ly + 24, fill=C_STONE, tags="ledger")
+        # A sunburst, barely there. Deco's one indulgence -- clipped to the panel.
+        cx0, cy0 = x + w / 2, y + h + 26
+        for k in range(-9, 10):
+            a = math.radians(90 + k * 6.5)
+            seg = clip_line(cx0, cy0, cx0 + math.cos(a) * 340, cy0 - math.sin(a) * 340,
+                            (x + 1, y + 1, x + w - 1, y + h - 1))
+            if seg:
+                c.create_line(*seg, fill=RAY, tags="ledger")
 
-        y = ly + 34
-        for label, value, reset, drives in (
-            ("7 day", d.get("week"), d.get("week_reset"), True),
-            ("5 hour", d.get("five"), d.get("five_reset"), False),
-        ):
-            c.create_text(lx + 10, y + 6, anchor="w", text=("* " if drives else "  ") + label,
-                          fill=C_PARCH if drives else C_DIM, font=("Consolas", 9), tags="ledger")
-            self.bar(lx + 74, y, 104, 13, value, stale)
-            right = f"{value}%" if value is not None else "--"
-            if reset:
-                right += f"  {reset}"
-            c.create_text(lx + lw - 10, y + 6, anchor="e", text=right,
-                          fill=C_DIM, font=("Consolas", 8), tags="ledger")
-            y += 22
+        for yy, col in ((y + 8, GOLD_LO), (y + 11, GOLD),
+                        (y + h - 11, GOLD), (y + h - 8, GOLD_LO)):
+            c.create_line(x + 10, yy, x + w - 10, yy, fill=col, tags="ledger")
+        # Chevrons at the head only. The foot belongs to the mood word, and
+        # "READING ALOUD" letterspaced is wide enough to sit right on them.
+        for sx, sgn in ((x + 10, 1), (x + w - 10, -1)):
+            for step in range(3):
+                run = 6 + step * 5
+                c.create_line(sx, y + 15 + step * 4, sx + sgn * run,
+                              y + 15 + step * 4, fill=GOLD_LO, tags="ledger")
 
-        y += 6
-        c.create_line(lx + 8, y, lx + lw - 8, y, fill=C_STONE, tags="ledger")
+        c.create_text(x + w / 2, y + 27, anchor="center", text=spaced("THE LEDGER", "  "),
+                      fill=GOLD, font=(TIMES, 10, "bold"), tags="ledger")
+        c.create_line(x + w / 2 - 54, y + 39, x + w / 2 + 54, y + 39, fill=GOLD_LO,
+                      tags="ledger")
+
+        size, rise = self.numeral_fit()
+        for frac, key, label, reset in ((0.29, "week", "VII DAYS", "week_reset"),
+                                        (0.71, "five", "V HOURS", "five_reset")):
+            v = d.get(key)
+            alarmed = v is not None and v >= 80
+            cx, cy = x + w * frac, y + 104
+            self.dial(cx, cy, v, alarmed)
+            # "--" rather than the raw absence: a blank dial is a state, not a fault.
+            c.create_text(cx, cy - rise, anchor="center",
+                          text=f"{v}%" if v is not None else "--",
+                          fill=(ALARM_HI if alarmed else GOLD_HI) if v is not None else GHOST,
+                          font=(TIMES, size, "bold"), tags="ledger")
+            c.create_text(cx, cy + 13, anchor="center", text=spaced(label),
+                          fill=C_DIM, font=(TIMES, 7), tags="ledger")
+            anew = d.get(reset)
+            c.create_text(cx, cy + 26, anchor="center",
+                          text=f"anew in {anew}" if anew else "no reckoning",
+                          fill=GHOST, font=(TIMES, 8, "italic"), tags="ledger")
 
         # His last words, and nothing older. A speech screen, not a log.
-        c.create_text(lx + 10, y + 12, anchor="nw", width=lw - 20,
-                      text=self.speech, fill=C_PARCH, font=("Consolas", 9),
-                      justify="left", tags="ledger")
+        self.fit_text(x + w / 2, y + 148, w - 40, 46, self.speech, IVORY,
+                      (TIMES, 12, "italic"))
 
         step = self.mood_step()
         word = ROLL_WORDS[self.roll.name] if self.roll else MOOD_WORDS[step]
         if time.time() - self.pelted_at < 2.0:
             word = "PELTED"
-        ratio = step / (len(MOOD_WORDS) - 1)
-        colour = C_PARCH if self.roll else (
-            C_GREEN if ratio < 0.35 else C_PARCH if ratio < 0.6
-            else C_AMBER if ratio < 0.85 else C_RED)
-        c.create_text(lx + 10, ly + self.SPRITE - 12, anchor="w", text=word,
-                      fill=colour, font=("Consolas", 12, "bold"), tags="ledger")
+        c.create_text(x + w / 2, y + h - 20, anchor="center", text=spaced(word),
+                      fill=C_DIM, font=(TIMES, 9), tags="ledger")
         if not d.get("fresh"):
-            c.create_text(lx + lw - 10, ly + self.SPRITE - 12, anchor="e",
-                          text="stale", fill=C_DIM, font=("Consolas", 7), tags="ledger")
+            c.create_text(x + w - 14, y + h - 20, anchor="e", text="stale",
+                          fill=GHOST, font=(TIMES, 8, "italic"), tags="ledger")
 
     def tick(self):
         try:
@@ -858,12 +1041,12 @@ class ScribePanel:
             if self.recoil_t0 is not None:
                 e = now - self.recoil_t0
                 if e > RECOIL_TIME:
-                    self.canvas.coords(self.sprite, self.PAD, self.PAD)
+                    self.canvas.coords(self.sprite, self.SPRITE_X, self.PAD)
                     self.recoil_t0 = None
                 else:
                     k = (1.0 - e / RECOIL_TIME) ** 2
                     self.canvas.coords(self.sprite,
-                                       self.PAD + 7 * k, self.PAD + 4 * k)
+                                       self.SPRITE_X + 7 * k, self.PAD + 4 * k)
 
             if frame != self.shown and self.images:
                 self.canvas.itemconfig(self.sprite, image=self.images[frame])
@@ -871,7 +1054,7 @@ class ScribePanel:
             self.draw_ledger()
         except Exception as exc:
             self.canvas.delete("ledger")
-            self.canvas.create_text(self.PAD * 2 + self.SPRITE + 10, 20, anchor="nw",
+            self.canvas.create_text(self.LEDGER_X + 10, 20, anchor="nw",
                                     text=f"scribe error:\n{exc}", fill=C_RED,
                                     font=("Consolas", 8), tags="ledger")
         if not self.once:

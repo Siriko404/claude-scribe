@@ -15,7 +15,6 @@ Six seconds is the floor, so the panel shows him dipping his quill while he
 writes. He is a scribe; he is not supposed to be instant.
 """
 
-import os
 import queue
 import subprocess
 import threading

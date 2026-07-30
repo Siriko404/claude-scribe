@@ -1,6 +1,22 @@
 # Where this stands
 
-The Scribe is finished and running. Everything below is verified, not assumed.
+The Scribe is running and committed. Everything below is verified unless the
+"Open" section says otherwise.
+
+## Live right now
+
+Panel, sprites, mood ramp, the three animations, the tomato, the ledger, the
+`/scribe` command and the statusline shim -- all wired and seen working.
+
+## Open, not yet confirmed
+
+- **The chat path has only been tested headless.** `Brain.ask()` was exercised
+  directly and answers correctly in voice within seven words, but nobody has yet
+  typed into the panel entry and watched a reply land on the speech screen. Two
+  things could bite there and neither has been observed: keyboard focus on an
+  `overrideredirect` window (the entry calls `focus_force()` on click, untested),
+  and the reply crossing from the worker thread to the canvas.
+- The three "ideas not yet built" below are untouched.
 
 ## What it is
 

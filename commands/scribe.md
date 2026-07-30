@@ -23,7 +23,9 @@ and the start need no sleep between them.
 **summon** (no arguments, or `start`) — replaces any running instance:
 
 ```powershell
-$Root = (Get-Content "$env:USERPROFILE\.claude\scribe-home" -Raw).Trim()
+$Root = (Get-Content "$env:USERPROFILE\.claude\scribe-home" -Raw -ErrorAction SilentlyContinue)
+if (-not $Root) { "the launch hook is not installed - add the SessionStart entry from the README, then restart Claude Code"; return }
+$Root = $Root.Trim()
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "$Root\scribe_window.py" -WorkingDirectory $Root -WindowStyle Hidden
 ```
@@ -39,7 +41,9 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.C
 checking the animations without waiting for real events:
 
 ```powershell
-$Root = (Get-Content "$env:USERPROFILE\.claude\scribe-home" -Raw).Trim()
+$Root = (Get-Content "$env:USERPROFILE\.claude\scribe-home" -Raw -ErrorAction SilentlyContinue)
+if (-not $Root) { "the launch hook is not installed - add the SessionStart entry from the README, then restart Claude Code"; return }
+$Root = $Root.Trim()
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "$Root\scribe_window.py","--demo" -WorkingDirectory $Root -WindowStyle Hidden
 ```

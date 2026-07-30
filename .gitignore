@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+
+# Everything under assets/ is decoded from the local Stronghold Crusader install.
+# It is the user's own game data, not ours to redistribute -- regenerate it with:
+#   node tools/export-frames.mjs "<path>/gm/scribe.gm1" 1
+#   python tools/upscale-frames.py --model EDSR_x4.pb --scale 4
+assets/

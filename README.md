@@ -125,7 +125,8 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 |---|---|
 | `scribe_window.py` | the panel — tkinter, stdlib only |
 | `scribe_brain.py` | his voice, memory and the Haiku call |
-| `commands/scribe.md` | the `/scribe` slash command, the only way to launch it |
+| `hooks/scribe-launch.mjs` | SessionStart hook: summons him, records where the checkout lives |
+| `commands/scribe.md` | the `/scribe` slash command, for forcing the issue by hand |
 | `scribe-writer.mjs` | statusline shim: records limits, then renders claude-hud unchanged |
 | `tools/gm1.mjs` | GM1/TGX reader + PNG writer, no dependencies |
 | `tools/export-frames.mjs` | dumps all 44 frames out of `scribe.gm1` |
@@ -140,8 +141,9 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 | every animation trigger | the session transcript `.jsonl`, tailed directly |
 
 Rate limits reach the desktop no other way — they exist only in the JSON payload
-Claude Code hands its statusline. The shim prints claude-hud's line byte-for-byte
-and records the payload on the side.
+Claude Code hands its statusline. The shim records the payload and then
+prints claude-hud's line byte-for-byte, or a plain one of its own if you have no
+claude-hud.
 
 When Claude Code isn't running, that state goes stale; after 90s the bars grey
 out and the panel says so rather than showing a confidently wrong face.

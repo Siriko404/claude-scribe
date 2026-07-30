@@ -6,14 +6,52 @@ where you put it (including on a second monitor). Right-click or Esc closes it.
 
 ```
 +--------------------------------------------------+
-|                      | THE SCRIBE'S LEDGER       |
-|   [ 220x220 sprite ] | * 7 day  [####----] 52% 2d|
-|                      |   5 hour [###-----] 40%   |
-|                      |   context[###-----] 42%   |
-|                      | $4.87  Opus 5  high       |
-|                      | WATCHFUL                  |
+|                      | THE SCRIBE'S LEDGER        |
+|   [ 220x220 sprite ] | * 7 day  [####----] 11% 2d |
+|                      |   5 hour [###-----] 40%    |
+|                      | -------------------------- |
+|                      | Eleven percent spent across|
+|                      | seven days, sire.          |
+|                      | WATCHFUL                   |
 +--------------------------------------------------+
 ```
+
+## Talking to him
+
+Type in the box at the foot of the panel and he answers on the screen above it —
+his last words only, never a log. He is his own `claude -p --model haiku`
+process, so asking him something never touches the session you are working in,
+which is the same courtesy `/btw` offers. He remembers the last six exchanges.
+
+**Seven words. Always.** Enforced in `_seven()`, not merely requested — a model
+asked for brevity drifts, and this one did. It cuts at the last full stop inside
+the allowance, so he ends on "the treasury fares." rather than "fares. Its."
+
+| Ask | Answer |
+|---|---|
+| how fares the treasury? | Eleven percent spent across seven days, sire. |
+| what did i just ask thee? | Thou asked-st how the treasury fares, sire. |
+| who art thou? | I am thy scribe and ledger-keeper, sire. |
+| fix the bug in gm1.mjs | Sire, I have no hands to mend. |
+
+He speaks the old tongue and calls the limits "the coffers", tokens "ink", money
+"coin", and Claude "the artificer". Threshold remarks — the 7-day crossing
+50/75/90%, a commit, an error, a tomato — are canned lines in the same voice:
+instant, free, no model call.
+
+Latency, measured on this machine:
+
+```
+plain claude -p            11.8s   session hooks + plugins
++ --settings {}             9.9s   hooks off
++ --strict-mcp-config       6.6s   MCP off        <- what he uses
+--bare                      fails  wants an API key; this box is on a subscription
+```
+
+Typical is 6-9s with a tail to 20s, so the timeout is 60s and the screen shows
+him dipping his quill while he writes. He is a scribe; he is not meant to be
+instant. Tools are disallowed outright — without that he goes and reads the repo
+when asked to fix something, which once took 45s and timed out mid-call.
 
 ## The face
 
@@ -86,6 +124,7 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 | File | Role |
 |---|---|
 | `scribe_window.py` | the panel — tkinter, stdlib only |
+| `scribe_brain.py` | his voice, memory and the Haiku call |
 | `commands/scribe.md` | the `/scribe` slash command, the only way to launch it |
 | `scribe-writer.mjs` | statusline shim: records limits, then renders claude-hud unchanged |
 | `tools/gm1.mjs` | GM1/TGX reader + PNG writer, no dependencies |
@@ -97,7 +136,7 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 
 | Value | Source |
 |---|---|
-| 7-day, 5-hour, context %, cost, model, effort | `~/.claude/scribe-state.json`, written by the statusline shim on every redraw |
+| 7-day, 5-hour, cost, model | `~/.claude/scribe-state.json`, written by the statusline shim on every redraw |
 | every animation trigger | the session transcript `.jsonl`, tailed directly |
 
 Rate limits reach the desktop no other way — they exist only in the JSON payload

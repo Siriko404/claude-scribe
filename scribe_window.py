@@ -39,6 +39,8 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 
+from scribe_brain import OMENS, Brain
+
 HERE = Path(__file__).resolve().parent
 FRAMES = HERE / "assets" / "frames"
 CLAUDE_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
@@ -308,7 +310,7 @@ class Transcript:
 
 class ScribePanel:
     SPRITE = 220
-    LEDGER_W = 268
+    LEDGER_W = 300
     PAD = 10
     CONTROL_H = 116
 
@@ -338,6 +340,10 @@ class ScribePanel:
         self.anger_at = None     # scowl scheduled a beat after impact
         self.pelted_at = 0.0
         self.base_pos = None
+        self.brain = Brain()
+        self.speech = "At your service, my lord."
+        self.waiting_since = None    # he is writing
+        self.omens_seen = set()      # thresholds already remarked upon
 
         w = self.PAD * 2 + self.SPRITE + self.LEDGER_W
         h = self.PAD * 2 + self.SPRITE + TRAY_H + (self.CONTROL_H if demo else 0)
@@ -425,10 +431,20 @@ class ScribePanel:
         c.create_rectangle(0, top, width, top + TRAY_H, fill="#171208",
                            outline=C_STONE)
         mid = top + TRAY_H / 2
-        self.slots["tomato"] = (34, mid)
-        self.draw_tomato(34, mid, ITEM_R, "tray")
-        c.create_text(60, mid, anchor="w", text="pelt the scribe",
-                      fill=C_DIM, font=("Consolas", 8))
+        self.slots["tomato"] = (28, mid)
+        self.draw_tomato(28, mid, ITEM_R, "tray")
+
+        self.entry = tk.Entry(self.canvas, bg="#241c11", fg=C_PARCH,
+                              insertbackground=C_PARCH, relief="flat", bd=0,
+                              font=("Consolas", 9), highlightthickness=1,
+                              highlightbackground=C_STONE, highlightcolor=C_DIM)
+        c.create_window(52, mid, anchor="w", window=self.entry,
+                        width=width - 66, height=24)
+        self.entry.insert(0, "speak to the scribe...")
+        self.entry.bind("<Return>", self.speak_to_him)
+        self.entry.bind("<FocusIn>", self.clear_placeholder)
+        self.entry.bind("<Button-1>", lambda _e: (self.root.focus_force(),
+                                                  self.entry.focus_set()))
 
     def throw(self, _name="tomato"):
         """Wind up, arc, then burst. The scowl lands a beat after the tomato."""
@@ -532,6 +548,40 @@ class ScribePanel:
             c.create_oval(blob["x"] - r, blob["y"] - r * drip + sag,
                           blob["x"] + r, blob["y"] + r * drip + sag,
                           fill=blob["colour"], outline="", tags="splat")
+
+    def clear_placeholder(self, _event=None):
+        if self.entry.get().startswith("speak to the scribe"):
+            self.entry.delete(0, "end")
+
+    def speak_to_him(self, _event=None):
+        question = self.entry.get().strip()
+        if not question or question.startswith("speak to the scribe"):
+            return
+        if not self.brain.ask(question, self.data):
+            self.speech = "One thing at a time, my lord."
+            return
+        self.entry.delete(0, "end")
+        self.waiting_since = time.time()
+
+    def say(self, text):
+        """Put words in his mouth and let him deliver them."""
+        self.speech = text
+        self.waiting_since = None
+        self.start("speak")
+
+    def check_omens(self, now):
+        """Unprompted remarks, but only when something actually changed."""
+        week = self.data.get("week")
+        if week is None:
+            return
+        for mark in (90, 75, 50):
+            if week >= mark and f"treasury_{mark}" not in self.omens_seen:
+                self.omens_seen.add(f"treasury_{mark}")
+                self.say(random.choice(OMENS[f"treasury_{mark}"]))
+                return
+        # the week rolled over; he is willing to be surprised again
+        if week < 45:
+            self.omens_seen.difference_update({"treasury_50", "treasury_75", "treasury_90"})
 
     def item_at(self, x, y):
         for name, (ix, iy) in self.slots.items():
@@ -711,46 +761,42 @@ class ScribePanel:
                       fill=C_PARCH, font=("Consolas", 10, "bold"), tags="ledger")
         c.create_line(lx + 8, ly + 24, lx + lw - 8, ly + 24, fill=C_STONE, tags="ledger")
 
-        y = ly + 36
+        y = ly + 34
         for label, value, reset, drives in (
             ("7 day", d.get("week"), d.get("week_reset"), True),
             ("5 hour", d.get("five"), d.get("five_reset"), False),
-            ("context", d.get("ctx"), "", False),
         ):
             c.create_text(lx + 10, y + 6, anchor="w", text=("* " if drives else "  ") + label,
                           fill=C_PARCH if drives else C_DIM, font=("Consolas", 9), tags="ledger")
-            self.bar(lx + 74, y, 110, 13, value, stale)
+            self.bar(lx + 74, y, 104, 13, value, stale)
             right = f"{value}%" if value is not None else "--"
             if reset:
                 right += f"  {reset}"
             c.create_text(lx + lw - 10, y + 6, anchor="e", text=right,
                           fill=C_DIM, font=("Consolas", 8), tags="ledger")
-            y += 24
+            y += 22
 
-        y += 4
+        y += 6
         c.create_line(lx + 8, y, lx + lw - 8, y, fill=C_STONE, tags="ledger")
-        y += 12
-        cost = f"${d['cost']:.2f}" if isinstance(d.get("cost"), (int, float)) else "$--"
-        meta = f"{cost}   {d.get('model', '-')}" + (f"   {d['effort']}" if d.get("effort") else "")
-        c.create_text(lx + 10, y, anchor="w", text=meta, fill=C_DIM,
-                      font=("Consolas", 8), tags="ledger")
-        c.create_text(lx + 10, y + 15, anchor="w", text=f"project  {d.get('cwd', '-')}",
-                      fill=C_DIM, font=("Consolas", 8), tags="ledger")
+
+        # His last words, and nothing older. A speech screen, not a log.
+        c.create_text(lx + 10, y + 12, anchor="nw", width=lw - 20,
+                      text=self.speech, fill=C_PARCH, font=("Consolas", 9),
+                      justify="left", tags="ledger")
 
         step = self.mood_step()
         word = ROLL_WORDS[self.roll.name] if self.roll else MOOD_WORDS[step]
         if time.time() - self.pelted_at < 2.0:
             word = "PELTED"
         ratio = step / (len(MOOD_WORDS) - 1)
-        color = C_PARCH if self.roll else (
-            C_GREEN if ratio < 0.35 else C_PARCH if ratio < 0.6 else C_AMBER if ratio < 0.85 else C_RED)
-        c.create_text(lx + 10, ly + self.SPRITE - 30, anchor="w", text=word,
-                      fill=color, font=("Consolas", 13, "bold"), tags="ledger")
-        c.create_text(lx + 10, ly + self.SPRITE - 12, anchor="w",
-                      text="demo - right-click to close" if self.demo else
-                           ("drag to move - right-click to close" if d.get("fresh")
-                            else "statusline stale - restart Claude Code"),
-                      fill=C_DIM, font=("Consolas", 7), tags="ledger")
+        colour = C_PARCH if self.roll else (
+            C_GREEN if ratio < 0.35 else C_PARCH if ratio < 0.6
+            else C_AMBER if ratio < 0.85 else C_RED)
+        c.create_text(lx + 10, ly + self.SPRITE - 12, anchor="w", text=word,
+                      fill=colour, font=("Consolas", 12, "bold"), tags="ledger")
+        if not d.get("fresh"):
+            c.create_text(lx + lw - 10, ly + self.SPRITE - 12, anchor="e",
+                          text="stale", fill=C_DIM, font=("Consolas", 7), tags="ledger")
 
     def tick(self):
         try:
@@ -775,6 +821,15 @@ class ScribePanel:
             if self.anger_at and now >= self.anger_at:
                 self.start("displeased")
                 self.anger_at = None
+                self.speech = random.choice(OMENS["pelted"])
+
+            reply = self.brain.take()
+            if reply:
+                self.say(reply)
+            elif self.waiting_since:
+                dots = "." * (1 + int((now - self.waiting_since) * 2) % 3)
+                self.speech = "the scribe dips his quill" + dots
+            self.check_omens(now)
 
             # The whole panel jolts, then his head rocks back and settles.
             if self.shake_t0 is not None and self.base_pos:

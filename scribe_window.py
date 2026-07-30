@@ -53,6 +53,7 @@ FPS = 30
 TICK_MS = 1000 // FPS
 STATE_EVERY = 1.0        # seconds between state-file reads
 BEAT_EVERY = 2.0         # seconds between heartbeat writes
+LOCK_WAIT = 2.0          # seconds a replacement waits for the old panel to let go
 STALE_AFTER = 90.0       # seconds before statusline data counts as cold
 TURN_DEBOUNCE = 1.5      # quiet time before a text-only reply counts as turn end
 
@@ -877,24 +878,37 @@ class ScribePanel:
             self.root.after(TICK_MS, self.tick)
 
 
-def claim_lock():
+def claim_lock(wait=LOCK_WAIT):
     """One panel at a time, decided by the OS rather than by a timestamp.
 
     The launch hook checks the heartbeat first, but two sessions starting
     together both read the same stale beat and both spawn. This is what
     actually settles it. Windows releases the lock even on a hard kill, so
     there is no staleness to reason about.
+
+    It waits rather than failing at once, because `/scribe` replaces the panel
+    by killing the old one and starting a new one, and the kill is not
+    instantaneous. Giving up immediately would leave that command killing the
+    scribe and silently declining to bring him back.
+
+    Returns the open file -- the caller must hold it, since closing it releases
+    the lock -- or None if someone else already has it.
     """
+    handle = open(LOCK_FILE, "w")
     try:
         import msvcrt
     except ImportError:
-        return True                       # not Windows; nothing to guard
-    try:
-        handle = open(LOCK_FILE, "w")
-        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-    except OSError:
-        return None
-    return handle                         # held open for the life of the process
+        return handle                     # not Windows; nothing to guard
+    deadline = time.time() + wait
+    while True:
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            return handle
+        except OSError:
+            if time.time() >= deadline:
+                handle.close()
+                return None
+            time.sleep(0.1)
 
 
 def main():

@@ -11,8 +11,9 @@ Panel, sprites, mood ramp, the three animations, the tomato, the ledger, the
 He now launches himself from a `SessionStart` hook. Measured, not assumed:
 a cold run spawns exactly one panel and writes a heartbeat; four runs against a
 live panel spawn nothing; two hooks fired simultaneously from cold leave exactly
-one survivor; and a spawn failure does reach the log (`ENOENT` caught inside the
-250ms the hook stays alive for).
+one survivor; `/scribe` replaces a live panel with a new pid and no sleep between
+the kill and the start; and a spawn failure does reach the log (`ENOENT` caught
+inside the 250ms the hook stays alive for).
 
 ## Open, not yet confirmed
 
@@ -76,7 +77,10 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   starting together read the same stale beat and both spawn. The panel takes an
   exclusive lock on `~/.claude/scribe.lock` and exits if it cannot get it; the
   heartbeat is only the cheap path that avoids spawning four processes a session
-  to have them die.
+  to have them die. It waits two seconds for the lock rather than failing at
+  once, because `/scribe` replaces the panel by killing the old one and starting
+  a new one -- giving up immediately would make that command kill the scribe and
+  silently decline to bring him back, which is worse than the bug it replaced.
 - **`Get-Process` returns an empty `CommandLine` on PowerShell 5.1.** `/scribe`
   summon filtered on it and so matched nothing -- it never replaced the running
   panel -- while `stop` had no filter at all and killed every `pythonw` on the

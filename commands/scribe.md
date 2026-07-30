@@ -12,6 +12,9 @@ explain the panel unless asked.
 He is summoned automatically at session start by the `scribe-launch.mjs` hook,
 so these are for when you want to force the issue.
 
+The new panel waits up to two seconds for the old one to release its lock, so
+the kill and the start need no sleep between them.
+
 Every command below identifies him with `Get-CimInstance`. `Get-Process` does
 **not** expose `CommandLine` on Windows PowerShell 5.1 — it comes back empty, so
 filtering on it matches nothing and killing without it kills every `pythonw` on
@@ -21,7 +24,6 @@ the machine.
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-Start-Sleep -Milliseconds 400
 Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel/scribe_window.py" -WorkingDirectory "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel" -WindowStyle Hidden
 ```
 
@@ -37,7 +39,6 @@ checking the animations without waiting for real events:
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object { $_.CommandLine -like '*scribe_window*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-Start-Sleep -Milliseconds 400
 Start-Process -FilePath (Get-Command pythonw).Source -ArgumentList "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel/scribe_window.py","--demo" -WorkingDirectory "C:/Users/sinas/OneDrive/Desktop/Projects/ClaudeSidePanel" -WindowStyle Hidden
 ```
 

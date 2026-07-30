@@ -167,6 +167,11 @@ enough:
 The heartbeat alone loses that race — the lock is what actually decides. Windows
 releases it even on a hard kill, so there is no staleness to reason about.
 
+A new panel waits two seconds for the lock rather than giving up at once, which
+is what lets `/scribe` kill the old one and start a new one with no sleep in
+between. Giving up immediately would leave that command killing the scribe and
+silently declining to bring him back.
+
 The hook prints nothing, since SessionStart stdout is injected into the session
 context. A detached spawn with its output discarded is invisible when it fails,
 so failures go to `~/.claude/scribe-launch.log` instead.

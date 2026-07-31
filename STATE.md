@@ -16,18 +16,14 @@ one survivor; `/scribe` replaces a live panel with a new pid and no sleep betwee
 the kill and the start; and a spawn failure does reach the log (`ENOENT` caught
 inside the 250ms the hook stays alive for).
 
+He fires under a real session start too -- seen, not inferred. The hook writes a
+dated line to `~/.claude/scribe-launch.log` on every run, and a `/compact` on
+2026-07-31 left `01:13:46Z ran; panel already up` there, three minutes after the
+last run made by hand. If that log is ever empty, the `SessionStart` entry in
+`~/.claude/settings.json` is not firing.
+
 ## Open, not yet confirmed
 
-- **The hook fires under a real session start, on strong evidence rather than
-  observation.** `~/.claude/scribe-home` is written by nothing but the hook, and
-  it was updated at 20:22 on 2026-07-30, between two commits, at a time when no
-  invocation was made by hand -- the last of those was three hours earlier. That
-  is inference, not a sighting.
-  It is now self-proving: the hook writes a dated line to
-  `~/.claude/scribe-launch.log` on *every* run, not only on failure. Read that
-  file at the start of the next session. A line whose timestamp matches the
-  session opening settles it; an empty file means the entry in
-  `~/.claude/settings.json` is not firing.
 - **The chat path has only been tested headless.** `Brain.ask()` was exercised
   directly and answers correctly in voice within seven words, but nobody has yet
   typed into the panel entry and watched a reply land on the speech screen. Two

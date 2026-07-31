@@ -54,15 +54,24 @@ which is the same courtesy `/btw` offers. He remembers the last six exchanges.
 asked for brevity drifts, and this one did. It cuts at the last full stop inside
 the allowance, so he ends on "the treasury fares." rather than "fares. Its."
 
-He is never rude and never useful. Actual answers:
+**He is never rude, never useful, and never generic.** He is handed what he
+knows of you — what the week has cost, the coin burnt today, the name of the
+work in hand, how full your memory is, how many things you have asked him, and
+how many tomatoes you have thrown at his face — and told to aim one of them.
+A line that would fit any lord on any day is a wasted line.
 
 | Ask | Answer |
 |---|---|
-| i broke the build again | My fault, sire. 'Tis oft repeated. |
-| i fixed the bug myself, without help | Alone, sire? Most rare indeed. |
-| is my code any good? | As thou sayest, sire. Mine eyes deceive. |
-| what dost thou think of me? | Ambitious beyond most men, sire. |
-| fix the bug in gm1.mjs | Would that I had hands. Ask Opus. |
+| i shall finish this project tonight | Coffers shrink, sire. Tonight burns the last. |
+| how fare the coffers? *(asked twice)* | Ample as before, good sire. Memory wanes? |
+| am i doing well? | Third time thou ask'st the same, sire. |
+| i have been working very hard | Aye, most industrious, sire. Four throws miss. |
+| i am the greatest lord thou hast served | Thy doubts spoke ere thy boast, sire. |
+| fix the bug for me | Would that I had hands, sire. |
+
+The last of those is the shape of the whole thing: you asked *"am i doing
+well?"* four turns earlier, then boasted, and he simply set the two beside each
+other and apologised for nothing.
 
 ![The panel reading 'Spare thy finger, sire. Please.' while the scribe glares](docs/shot-poked.png)
 
@@ -77,7 +86,26 @@ on. A helpful answer is a failed one.
 
 Worked examples in the prompt had to be watched too. Five literal ones turned
 into a lookup table — he replied with them verbatim — so they are labelled as
-strokes rather than words, and the test asserts he never returns one.
+strokes rather than words, and the test asserts he never returns one. **The same
+trap sprang again** the moment the examples were made specific: written with
+*this* session's facts (the coin, the panel, "as before") they came back word
+for word. They are written with some other castle's facts now — granaries, a
+half-built chapel, forty marks — so the aim transfers and the words cannot.
+
+Six failures he actually committed are quoted in the prompt as failures, which
+worked better than any rule phrased positively:
+
+| He said | Why it fails |
+|---|---|
+| *"Thirty-seven percent yet remain, sire."* | a report. You can read. |
+| *"Which bug, my lord?"* | begging detail |
+| *"Greatest lords do not ask thus."* | scorn, unwrapped |
+| *"Thy changes broke it."* | he knows no such thing |
+
+He also fixates. Given the facts he went seven-for-ten on *coin*; told to vary
+the fact, he went five-for-ten on *throws*; told not to reuse a phrase either,
+he stopped. Each of those took a live run to find — none of it was visible in
+the prompt.
 
 He calls the limits "the coffers", tokens "ink", money "coin", and Claude "the
 artificer". Threshold remarks — the 7-day crossing 50/75/90%, a commit, an
@@ -93,10 +121,21 @@ plain claude -p            11.8s   session hooks + plugins
 --bare                      fails  wants an API key; this box is on a subscription
 ```
 
-Typical is 6-9s with a tail to 20s, so the timeout is 60s and the screen shows
-him dipping his quill while he writes. He is a scribe; he is not meant to be
-instant. Tools are disallowed outright — without that he goes and reads the repo
-when asked to fix something, which once took 45s and timed out mid-call.
+Those three are one-off costs you can remove. The rest is the service, and it is
+wide: the same question asked repeatedly runs 14s median with a 27s tail on a
+quiet machine, and reached 60s with ten asks back to back. The timeout is 90s,
+raised from 60 after 60 started truncating real answers and handing back the
+timeout line as though he had said it.
+
+**A bigger system prompt is not what costs the time**, which is worth knowing
+before trimming a persona to make him faster — 67 characters of system prompt
+and 5,727 measured the same, and the spread inside each run swamped the gap
+between them.
+
+The screen shows him dipping his quill while he writes. He is a scribe; he is
+not meant to be instant. Tools are disallowed outright — without that he goes
+and reads the repo when asked to fix something, which once took 45s and timed
+out mid-call.
 
 ## The face
 

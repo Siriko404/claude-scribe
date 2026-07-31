@@ -572,6 +572,7 @@ class ScribePanel:
         self.splatter = Splatter(root)
         self.taunts = Taunts()
         self.misses = 0          # consecutive; he gets crueller as it climbs
+        self.hits = 0            # for the whole session; he mentions it when asked
         self.roll_up = ROLL_UP
         self.roll_hold = ROLL_HOLD
         self.slots = {}          # item name -> tray position
@@ -768,6 +769,7 @@ class ScribePanel:
         self.base_pos = (self.root.winfo_x(), self.root.winfo_y())
         self.pelted_at = now
         self.misses = 0            # you landed one; the ridicule starts over
+        self.hits += 1             # but the session tally never resets
 
         for _ in range(11):                        # pulp stuck to his face
             self.splats.append({
@@ -934,7 +936,11 @@ class ScribePanel:
         question = self.entry.get().strip()
         if not question or question.startswith("speak to the scribe"):
             return
-        if not self.brain.ask(question, self.data):
+        # read_state() rebuilds self.data every second, so the tallies are
+        # merged in here rather than kept in it -- he is told how you have been
+        # treating him at the moment he is asked, and not before.
+        if not self.brain.ask(question, dict(self.data, hits=self.hits,
+                                             misses=self.misses)):
             self.speech = "One thing at a time, my lord."
             return
         self.entry.delete(0, "end")

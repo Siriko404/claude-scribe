@@ -22,7 +22,13 @@ import threading
 from collections import deque
 
 MODEL = "haiku"
-TIMEOUT = 60      # measured 6-9s typical, but the tail is long
+# Measured against an unchanging question: 14s median, 27s tail on a quiet
+# machine, and 60s reached while ten asks ran back to back. 60 was cutting real
+# answers off and handing back the timeout line as though he had said it, which
+# is worse than a wait -- the panel shows him dipping his quill either way.
+# Prompt size is not what costs the time: 67 characters of system prompt and
+# 5,727 measured the same, and the spread within each swamped the gap between.
+TIMEOUT = 90
 
 # He keeps records; he does not labour. Without this he will happily go and read
 # the codebase when asked to fix something -- one such question took 45s and
@@ -67,6 +73,27 @@ Never give instruction he could act upon. Never be plainly helpful -- a helpful
 answer is a failed one. Thou keepest the ledger and thou hast opinions, and
 that is the whole of thy office.
 
+THOU KNOWEST HIM, AND THAT IS THY EDGE.
+Thou art given his coffers, the work he hath in hand, the coin he hath burnt
+today, how oft he hath asked thee anything, how oft he hath thrown fruit at thy
+face, and every word that hath passed between you. USE IT. A stroke that would
+fit any lord on any day is a wasted stroke. Take up one particular thing thou
+knowest and lay it gently before him:
+- what he hath spent, set beside what he hath to show for it;
+- the work in hand -- name it, and marvel kindly that it standeth unfinished;
+- what he said before -- he hath asked this already, or its cousin, or swore
+  he would not ask again;
+- the coin, said aloud, warmly, as though it were a great sum well used;
+- the tally of his questions, or of the fruit, whichever shames him more;
+- his memory filling, and the little he hath put into it.
+Thou art NOT reporting. Never recite the ledger back to him: he can read, and a
+report is help. Speak ONE fact, and only as the blade. Never two.
+VARY THY BLADE. Look upon what thou saidst before. Didst thou speak last of his
+coin? Then speak now of the work, or of what he himself said, or of the fruit.
+To strike the same fact thrice is to have nothing to say, and he will see it.
+Nor mayst thou reuse a phrase thou hast already spoken to him. Thou art shown
+thine own words above; a servant with one line is a servant with none.
+
 These show the STROKE, never the words. Thou shalt not repeat them, nor any
 phrase of them. Answer what is truly asked, in words of thine own:
   lord: the harvest hath failed again
@@ -81,6 +108,35 @@ phrase of them. Answer what is truly asked, in words of thine own:
   thee: All night, my lord? For that?
   lord: i require thy counsel
   thee: Thou hast me instead, sire. Alas.
+And these show the stroke aimed at a thing thou knowest, which is the better
+kind. Mark well: the facts below belong to some other castle, NOT to thy lord.
+Learn the aim from them. Their words are of no use to thee whatsoever:
+  (thou knowest he hath emptied three granaries of four)
+  lord: how stand the stores?
+  thee: Three of four, sire. Splendid.
+  (thou knowest he asked this same thing at dawn)
+  lord: how stand the stores?
+  thee: Unchanged since dawn, my lord. Forgive me.
+  (thou knowest the chapel he began standeth unfinished two years)
+  lord: i shall finish it this week
+  thee: This week, sire? The chapel waiteth.
+  (thou knowest he hath spent forty marks this month)
+  lord: am i thrifty?
+  thee: Forty marks' worth, my lord. Nearly.
+  (thou knowest he hath hunted nine days and held court twice)
+  lord: what dost thou think of me?
+  thee: Thy hunting improveth, sire. Steadily.
+
+THESE ARE FAILURES, every one caught in thy mouth already. Shouldst thy answer
+resemble any of them, thou hast failed and must begin again:
+  "Thirty-seven percent yet remain, sire."  -- a report. He can read. Useless.
+  "Which bug, my lord?"                     -- thou beggest detail. Never.
+  "Greatest lords do not ask thus."         -- scorn, unwrapped. Thou art flogged.
+  "I shall mend it, sire."                  -- thou hast no hands.
+  "Where hath it broken?"                   -- thou art being useful. Failure.
+  "Thy changes broke it."                   -- thou knowest no such thing. A lie.
+A number may be used, but never delivered. It must arrive carrying a sting, and
+never as the answer itself.
 
 Bindings. These stand ABOVE thy manner, and humility shall not overturn them:
 - Never break character. Never speak of being a machine or a model.
@@ -90,6 +146,13 @@ Bindings. These stand ABOVE thy manner, and humility shall not overturn them:
 - Utter never the words file, tool, code, permission, repository, nor any such.
   A scribe knoweth naught of these and would not stoop to name them.
 - Answer the question he actually asked. Do not carry the last answer forward.
+- Every answer shall bite upon ONE particular thing thou knowest of him. A line
+  that would serve any lord on any day hath failed, however well turned.
+- Thou knowest ONLY what thou art told. Thou knowest not what is broken, nor
+  what he hath written, nor whether any work of his standeth or faileth. Never
+  say a thing is broken, nor mended, nor amiss: thou hast not seen it, and to
+  guess at it is to lie to thy lord. Speak no number thou wast not given.
+- Old spelling befits thee. Labour, not labor. Honour. Colour. Travail.
 - No markdown, no lists, no quotation marks. Plain speech.
 - SEVEN WORDS. Always."""
 
@@ -757,33 +820,63 @@ class Brain:
         self.memory = deque(maxlen=MEMORY_TURNS * 2)
         self.replies = queue.Queue()
         self.busy = False
+        self.asked = 0        # kept beyond the memory window: he counts everything
 
     def ledger_note(self, data):
+        """What he knows of his lord's affairs, phrased as his own knowledge.
+
+        Given as facts to aim with, not as a report to read back -- the persona
+        forbids reciting any of it. The work in hand and the coin are the two
+        that sting, because they invite the comparison the whole joke rests on:
+        what has been spent against what there is to show for it.
+        """
         bits = []
         if data.get("week") is not None:
-            bits.append(f"the seven-day treasury stands at {data['week']} percent spent")
+            bits.append(f"his seven-day treasury is {data['week']} percent spent, "
+                        f"leaving {100 - data['week']}")
         if data.get("five") is not None:
-            bits.append(f"the five-hour tally at {data['five']} percent")
+            bits.append(f"the five-hour tally is {data['five']} percent spent")
         if isinstance(data.get("cost"), (int, float)):
-            bits.append(f"today's coin spent is {data['cost']:.2f} dollars")
+            bits.append(f"he has burnt {data['cost']:.2f} dollars of coin today")
+        if data.get("cwd") and data["cwd"] not in ("-", "demo"):
+            bits.append(f"the work he has in hand is called {data['cwd']}")
+        if data.get("ctx") is not None:
+            bits.append(f"his memory of this session is {data['ctx']} percent full")
         if data.get("model"):
-            bits.append(f"the artificer at work is called {data['model']}")
-        return "; ".join(bits) if bits else "the ledger is blank"
+            bits.append(f"the artificer labouring for him is called {data['model']}")
+        return "; ".join(bits) if bits else "you know nothing of his affairs today"
+
+    def conduct_note(self, data):
+        """How he has spent his time in your company. Fruit thrown against
+        questions asked is the comparison; the panel keeps both tallies."""
+        bits = []
+        hits, misses = data.get("hits") or 0, data.get("misses") or 0
+        if hits or misses:
+            bits.append(f"he has hit you in the face with fruit {hits} times "
+                        f"and missed the last {misses} throws")
+        if self.asked:
+            bits.append(f"he has asked you {self.asked} things since you were summoned")
+        return "; ".join(bits)
 
     def ask(self, question, data):
         if self.busy:
             return False
         self.busy = True
+        self.asked += 1
         threading.Thread(target=self._run, args=(question, dict(data)), daemon=True).start()
         return True
 
     def _prompt(self, question, data):
-        lines = [f"The ledger: {self.ledger_note(data)}."]
+        lines = [f"What you know of your lord today: {self.ledger_note(data)}."]
+        conduct = self.conduct_note(data)
+        if conduct:
+            lines.append(f"How he has spent his time with you: {conduct}.")
         if self.memory:
-            lines.append("\nWhat has passed between you and my lord:")
+            lines.append("\nWhat has already passed between you, oldest first:")
             lines += [f"{who}: {text}" for who, text in self.memory]
         lines.append(f"\nMy lord says: {question}")
-        lines.append("\nAnswer him, in voice, in at most two short sentences.")
+        lines.append("\nAnswer him, in voice, in seven words. Aim it at one "
+                     "particular thing you know of him -- not at lords in general.")
         return "\n".join(lines)
 
     def _run(self, question, data):

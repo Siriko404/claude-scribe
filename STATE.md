@@ -160,6 +160,31 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   the manner, and refusing is shown as one of the strokes.
 - **Named bans beat gestured ones.** "Speak never of tools, files, permissions"
   still produced "bid artificer read file". The forbidden words are listed.
+- **He is aimed now, not merely rude.** He is handed the coffers, the coin, the
+  name of the work in hand, how full the context is, a running count of asks
+  (`Brain.asked`) and the hit/miss tallies the panel merges in at ask time, and
+  is told to bite on exactly one of them. The best line of the whole run used
+  the memory rather than any number: asked "am i doing well?" and then boasted
+  four turns later, he answered "Thy doubts spoke ere thy boast, sire."
+- **The lookup-table trap sprang a second time**, and specificity is what
+  sprang it. Examples written with *this* session's facts -- the coin, the
+  panel, "as before" -- came back verbatim within one run. Rewritten with
+  another castle's facts (granaries, a half-built chapel, forty marks) the aim
+  transfers and the words cannot.
+- **He fixates on whichever fact he is given first.** Seven of ten answers
+  named the coin. Told to vary the fact, five of ten named the fruit. Told not
+  to reuse a phrase either, he stopped. Three live runs, one lesson each; none
+  of it was visible in the prompt.
+- **Quoting his own failures back at him beat every positive rule.** Recitation
+  ("Thirty-seven percent yet remain"), begged detail ("Which bug, my lord?"),
+  unwrapped scorn ("Greatest lords do not ask thus") and invention ("Thy
+  changes broke it") all stopped once they were listed in the prompt as
+  failures he had already committed.
+- **Prompt size is not what makes him slow.** 67 characters of system prompt
+  and 5,727 measured the same (13.1s and 14.0s median), and the spread within
+  each run swamped the gap. It is service variance and output length. The
+  timeout went 60 -> 90 because 60 was truncating real answers and returning
+  the timeout line as though he had said it.
 - **A pool still repeats however big it gets.** Plain random.choice says the
   same thing twice in a row often enough to spoil a taunt, which is the one
   thing a taunt cannot do. Draws avoid the last twelve: 0 back-to-back repeats

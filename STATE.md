@@ -5,8 +5,9 @@ The Scribe is running and committed. Everything below is verified unless the
 
 ## Live right now
 
-Panel, sprites, mood ramp, the three animations, the tomato, the ledger, the
-`/scribe` command and the statusline shim -- all wired and seen working.
+Panel, sprites, mood ramp, the three animations, the deco ledger, the aimed
+tomato and its screen splats, the fifty taunts, the `/scribe` command and the
+statusline shim -- all wired and seen working.
 
 He now launches himself from a `SessionStart` hook. Measured, not assumed:
 a cold run spawns exactly one panel and writes a heartbeat; four runs against a
@@ -113,6 +114,24 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
 - **Launch power was measured, not chosen.** Swept every angle and strength:
   9.5 needs a 65px pull minimum, 14.0 collapses the high lob into a single
   solution. 12.5 keeps both arcs and opens up half the sling's range.
+- **Worked examples in a system prompt become a lookup table.** Five literal
+  ones and he answered with them verbatim. Labelling them as strokes rather
+  than words fixed it -- and took the bite with it, because the examples had
+  been carrying the tone. The test now asserts he never returns one.
+- **Being helpful is the failure mode, not being rude.** With the parroting
+  gone he reverted to "Where hath it broken?" and "Lay bare thy code" --
+  assistant reflexes in costume. Asking for the tone never produced it; only
+  forbidding counsel outright did. No asking what he needs, no requesting
+  detail, no instruction he could act upon.
+- **A new persona section can quietly overturn an old binding.** "fix the bug"
+  got "I shall mend it" once the humble manner was added, because humility read
+  as a reason to agree. The bindings now say in the prompt that they stand above
+  the manner, and refusing is shown as one of the strokes.
+- **Named bans beat gestured ones.** "Speak never of tools, files, permissions"
+  still produced "bid artificer read file". The forbidden words are listed.
+- **A fifty-line pool still repeats.** Plain random.choice says the same thing
+  twice in a row often enough to spoil a taunt, which is the one thing a taunt
+  cannot do. Draws avoid the last twelve; measured 0 repeats over 40.
 - **The brain gets no tools.** Without that he goes and reads the repo when asked
   to fix something; one such question took 45s and timed out mid-tool-call. His
   refusal then leaked the plumbing, so the persona gives him no hands and no
@@ -136,3 +155,4 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
 - More things to throw.
 - Unprompted remarks currently fire on three thresholds only; there are more
   events available in the transcript.
+- More things to throw, now that the sling and the screen splats exist.

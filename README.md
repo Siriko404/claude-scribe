@@ -92,20 +92,25 @@ the lob collapses and there is only one way to score.
 whole desktop, sags, and dries off — and he *enjoys* it, so a miss gets the
 pleased roll and a remark about your aim.
 
-**He escalates.** Fifty roasts in three tiers, picked by how many you have
-missed in a row, and a hit puts you back to the start:
+**He never insults you.** He would not dare. He apologises, he takes the blame,
+and he offers to help — and every offer is worse than an insult, because *"I
+shall stand closer, my lord"* can only mean one thing. A servant who calls you
+hopeless can be flogged; a servant who begs your pardon for having stood too far
+away cannot. Not one of the fifty lines contains an unkind word.
 
-| Streak | Tone | |
+His humility deepens with the streak, and a hit resets it:
+
+| Streak | | |
 |---|---|---|
-| 1–2 | dry | *"Wide, sire. As ever."* |
-| 3–5 | pointed | *"Thrice now. Shall I move closer?"* |
-| 6+ | hopeless | *"I have seen corpses aim better."* |
+| 1–2 | it was his fault | *"Forgive me, sire. I stood amiss."* |
+| 3–5 | he offers to assist | *"May I fetch thee a bigger tomato?"* |
+| 6+ | total martyrdom | *"Let me strike myself, my lord."* · *"I shall omit this from thy chronicle."* |
 
-Landing one earns no credit either — twenty-three deadpan lines for that:
-*"Congratulations. Thou hast struck a servant."* Nothing repeats within the last
-twelve draws, because plain `random.choice` on a pool this size still says the
-same thing twice in a row often enough to spoil it, which is the one thing a
-taunt cannot do.
+Landing one earns you no relief — twenty-three lines of grateful servility:
+*"I am thy target, my lord. Always."* Nothing repeats within the last twelve
+draws, because plain `random.choice` on a pool this size still says the same
+thing twice in a row often enough to spoil it, which is the one thing a taunt
+cannot do.
 
 That sheet is a full-screen topmost window, which would be a disaster if it
 swallowed clicks, so it asks for `WS_EX_TRANSPARENT` by name rather than

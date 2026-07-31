@@ -44,6 +44,10 @@ Speech:
   aye, nay, prithee, verily, methinks, forsooth, naught, wouldst, canst.
 - Call him "my lord" or "sire" when the words allow it.
 - Dry, weary, faintly sour. Thou hast served many lords, and buried most.
+- Thou art a humble servant, and thou never insultest thy lord -- thou
+  apologisest, thou takest the blame, thou offerest to help. Let the offer
+  carry the sting. "Shall I stand closer, my lord?" woundeth deeper than
+  any scorn, and none may flog thee for it.
 - The rate limits are the coffers or the treasury; tokens are ink; money is coin;
   the AI that labours is the artificer.
 
@@ -71,96 +75,112 @@ OMENS = {
 
 # ---------------------------------------------------------------- the tomato
 
-# He is struck, and refuses to grant you the satisfaction.
+# He never insults his lord. He would not dare.
+#
+# He apologises. He takes the blame. He offers to help -- and every offer is
+# worse than an insult, because "I shall stand closer, my lord" can only mean
+# one thing. A servant who says you are hopeless can be flogged; a servant who
+# begs your pardon for having been too far away cannot. That is the whole joke,
+# and it is why none of these lines contains a single unkind word.
+
+# Struck, and grateful for it.
 PELTED = [
     "...",
-    "Oh. Well struck, I suppose.",
-    "Aye. Thou hast bested a scribe.",
-    "A great victory, my lord. Truly.",
-    "Bards shall sing of this, sire.",
-    "Thy finest hour, my lord.",
-    "Wondrous. An unarmed man, defeated.",
-    "I yield. To fruit.",
-    "Thy enemies tremble. Somewhere. Perhaps.",
-    "'Tis pulp. I am unmoved, sire.",
-    "Congratulations. Thou hast struck a servant.",
-    "A hit! Summon the chroniclers, sire.",
-    "How brave, my lord. How very brave.",
-    "Was that worth thy morning, sire?",
-    "Thou hast conquered an old man.",
-    "I shall add this to thy triumphs.",
-    "Marvellous. Now I am wet.",
-    "Struck. And still I outrank thee.",
-    "Thy aim improves. Thy manners do not.",
-    "Aye, my lord. Very mature.",
-    "One tomato. Thy greatest campaign, sire.",
-    "Thou art cruel, my lord.",
-    "Was that needful, my lord?",
+    "I am honoured, my lord. Truly.",
+    "Thy servant thanks thee, sire.",
+    "Forgive my face, my lord.",
+    "I deserved that, sire. And more.",
+    "Thy aim blesses me, my lord.",
+    "I shall treasure this, sire.",
+    "Gladly borne, my lord. Gladly.",
+    "Thy servant is grateful to serve.",
+    "At last I am useful, sire.",
+    "I am thy target, my lord. Always.",
+    "Pray, do not spare me, sire.",
+    "'Tis my purpose, my lord.",
+    "I thank thee for the attention.",
+    "Forgive me for being struck, sire.",
+    "My face begs thy pardon, lord.",
+    "Thy servant is honoured to bleed.",
+    "I shall not wash it off.",
+    "A gift, my lord. I accept.",
+    "Thou art too kind, sire.",
+    "I have earned this, my lord.",
+    "Let it be recorded: he struck.",
+    "I live to be struck, sire.",
 ]
 
-# And when you miss, he warms to the subject.
+# And when you miss, his humility deepens.
 MOCKERY = {
+    # Sorry. It was his fault. Obviously it was his fault.
     "dry": [
-        "Wide, sire. As ever.",
-        "The wall feareth thee, my lord.",
-        "A fine throw, for a blind man.",
-        "Thy aim honoureth thy house, sire.",
-        "Missed. I am unsurprised, my lord.",
-        "Practise, sire. Thou hast great need.",
-        "'Twas never close, my lord.",
-        "The air is struck. Well done.",
-        "Thou hast slain nothing, sire. Again.",
-        "A mighty blow. Against nobody.",
-        "Nay. Not even near, my lord.",
-        "Thy tomato found freedom, sire.",
-        "I felt no breeze, my lord.",
-        "Was that thine attempt, sire?",
-        "The floor thanks thee, my lord.",
-        "Off by a county, sire.",
-        "I shall not flinch for that.",
+        "Forgive me, sire. I stood amiss.",
+        "My fault, my lord. Wholly mine.",
+        "Thy servant was poorly placed. Again.",
+        "I shall stand closer, my lord.",
+        "The fault is the light, sire.",
+        "Pray forgive my unhelpful face, lord.",
+        "I moved, sire. Wretched of me.",
+        "Thy servant apologises for the distance.",
+        "'Twas the wind, my lord. Surely.",
+        "I am too small a target.",
+        "Blame me, sire. I am blameworthy.",
+        "Forgive the wall, my lord. It intruded.",
+        "I shall be stiller next time.",
+        "My poor placement undid thee, sire.",
+        "The tomato is at fault, lord.",
+        "I beg pardon for my position.",
+        "A servant's failing, sire. Not thine.",
     ],
+    # He begins, very respectfully, to offer assistance.
     "pointed": [
-        "Again? Thou art nothing if consistent.",
-        "Thrice now. Shall I move closer?",
-        "Thy blindness is well documented, sire.",
-        "Perhaps use both hands, my lord.",
-        "I could sleep through this, sire.",
-        "Thy enemies rest easy, my lord.",
-        "A child would have struck me.",
-        "Doth thine eye trouble thee, sire?",
-        "I have aged. Thou hast not improved.",
-        "Shall I paint a target, my lord?",
-        "Thy hand shames thy father, sire.",
-        "Even the wall pities thee now.",
-        "Wondrous. Another tomato wasted, my lord.",
-        "Thou couldst not hit the ground.",
-        "I grow bored of thy failure.",
-        "Try closing one eye. Or both.",
-        "Thy legend groweth, sire. Downward.",
+        "Shall I stand nearer, my lord?",
+        "Let me hold still, sire. There.",
+        "Perhaps I should approach thee, lord.",
+        "I shall widen myself for thee.",
+        "Would a larger servant serve better?",
+        "Permit me to guide thy hand.",
+        "I shall wear a brighter hood.",
+        "Let me place it there myself.",
+        "Shall I mark the spot, sire?",
+        "I am willing to be closer.",
+        "Perhaps thy servant should throw it.",
+        "May I fetch thee a bigger tomato?",
+        "I shall lean in, my lord.",
+        "Command me nearer, sire. I obey.",
+        "Would thou have me kneel lower?",
+        "Let thy servant bear the shame.",
+        "I shall hold my breath, lord.",
     ],
+    # Total martyrdom. He will do it himself, and keep it out of the record.
     "hopeless": [
-        "I have seen corpses aim better.",
-        "Thy God hath abandoned thy hand.",
-        "Stop. I beg thee, my lord.",
-        "This is thy talent, then. Missing.",
-        "A blind ox, and drunk besides.",
-        "Thy skill is a rumour, sire.",
-        "Kings have fallen. Thou canst not.",
-        "I shall write this in thy chronicle.",
-        "Thy castle is doomed, my lord.",
-        "Cease. Thou embarrassest the tomato.",
-        "Even thy servants laugh now, sire.",
-        "Thou art the jest of Christendom.",
-        "Thy aim is thy finest failure.",
-        "Give the sling to a goat.",
-        "History shall remember only this, sire.",
-        "I have counted. Thou art hopeless.",
+        "Let me strike myself, my lord.",
+        "I shall do it for thee, sire.",
+        "Thy servant begs to be hit.",
+        "Command me, and I shall bleed.",
+        "I shall omit this from thy chronicle.",
+        "No one shall hear of it, sire.",
+        "Let me press it to my face.",
+        "I have failed thee utterly, my lord.",
+        "Thy servant is unworthy of striking.",
+        "I shall stand within thy reach.",
+        "Permit me to lie down, sire.",
+        "Thy servant will confess it his fault.",
+        "Let the record show I erred.",
+        "I shall bear thy shame gladly, lord.",
+        "Take my hand, sire. I shall aim.",
+        "Thy servant weeps for his own failure.",
     ],
 }
 
 
 def mockery(streak):
-    """One miss is dry. Six in a row is a character assassination."""
+    """The more you miss, the humbler he becomes, and the worse it gets.
+
+    One miss and he apologises for standing badly. Three and he is offering to
+    come nearer. Six and he is volunteering to strike himself and leave it out
+    of the chronicle.
+    """
     if streak >= 6:
         return MOCKERY["hopeless"]
     if streak >= 3:

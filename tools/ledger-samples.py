@@ -13,6 +13,11 @@ states that break things: empty, full, near the limit, no ledger at all, and a
 speech long enough to run into what sits below it. Those are what caught the
 defects in the first draft.
 
+The last of those carries the widest numeral a column can hold as well as the
+tallest speech. They were two samples once, which meant the frame where they
+meet -- and where the five-pixel gutter between them could close -- was never
+rendered at all.
+
 It takes no lock and does not disturb a running panel. Output lands in
 assets/ledger-samples/.
 """

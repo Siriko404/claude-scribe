@@ -11,6 +11,11 @@ where you put it, including on a second monitor. Right-click or Esc closes it.
 > *At rest. Seventy-three parts of the week still in the coffer, so he is
 > cheerful about it.*
 
+**His face is not in this repository.** Every screenshot here shows sprites
+decoded from a local Stronghold Crusader install — one command, and
+[Installing](#installing) has it. Clone this without the game and he arrives
+faceless.
+
 He floats above every window and reports two numbers Claude Code exposes nowhere
 else: how much of your five-hour and seven-day allowance is left. His face tracks
 the week — a broad grin at nothing spent, a stern frown near the end, and nine

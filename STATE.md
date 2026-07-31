@@ -18,10 +18,16 @@ inside the 250ms the hook stays alive for).
 
 ## Open, not yet confirmed
 
-- **The hook has not been proven under a real session start.** Every test above
-  ran the script by hand, which inherits this shell's PATH and CWD. The hook's
-  own environment may differ -- that is the whole reason it logs. Check
-  `~/.claude/scribe-launch.log` after the next restart.
+- **The hook fires under a real session start, on strong evidence rather than
+  observation.** `~/.claude/scribe-home` is written by nothing but the hook, and
+  it was updated at 20:22 on 2026-07-30, between two commits, at a time when no
+  invocation was made by hand -- the last of those was three hours earlier. That
+  is inference, not a sighting.
+  It is now self-proving: the hook writes a dated line to
+  `~/.claude/scribe-launch.log` on *every* run, not only on failure. Read that
+  file at the start of the next session. A line whose timestamp matches the
+  session opening settles it; an empty file means the entry in
+  `~/.claude/settings.json` is not firing.
 - **The chat path has only been tested headless.** `Brain.ask()` was exercised
   directly and answers correctly in voice within seven words, but nobody has yet
   typed into the panel entry and watched a reply land on the speech screen. Two

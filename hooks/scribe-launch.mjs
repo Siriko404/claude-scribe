@@ -68,7 +68,14 @@ try {
   note(`could not record home: ${err.message}`);
 }
 
-if (panelIsUp()) process.exit(0);
+// Every run leaves a dated line, not just the failures. Whether this hook fires
+// under a real session start is otherwise unobservable from inside the session:
+// the only trace was a file's mtime, and reasoning from that is guesswork.
+if (panelIsUp()) {
+  note("ran; panel already up");
+  process.exit(0);
+}
+note("ran; no heartbeat, summoning him");
 
 const exe = CANDIDATES.find(existsSync) || "pythonw";
 try {

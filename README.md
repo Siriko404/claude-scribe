@@ -1,29 +1,42 @@
 # The Scribe
 
-A small always-on-top desktop panel for Claude Code: his ledger on the left,
-the game's own hooded scribe on the right. Frameless, draggable, remembers where
-you put it (including on a second monitor). Right-click or Esc closes it.
+**Stronghold Crusader's hooded advisor, moved onto the desktop to keep the
+ledger — and to be pelted with tomatoes.**
 
-```
-+--------------------------------------------------+
-|  ---   T H E   L E D G E R   ---  |              |
-|  V HOURS               VII DAYS   |              |
-|     o                     o       | [ 220x220 ]  |
-|     o                     o       |   sprite     |
-|     @   Sixty-three       o       |              |
-|     @   parts spent,      @       |              |
-|     @   my lord.          @       |              |
-|     @                     @       |              |
-|  LXXXVIII              LXXIII     |              |
-|    LXIV m   CHEERFUL     II d     |              |
-+--------------------------------------------------+
-```
+A small always-on-top panel for Claude Code. Frameless, draggable, remembers
+where you put it, including on a second monitor. Right-click or Esc closes it.
 
-Art deco, set in Times. Each limit is a column of ten coins — one per tenth of
-the allowance, struck for what remains and hollow for what is spent — with the
-tally and the wait beneath it in roman. Both columns are pushed to the edges so
-his words get the middle, and they are set as large as the room allows. The
-coins turn iron-red past 80% spent.
+![The panel: a gold-on-black ledger beside the game's hooded scribe, who is smiling faintly](docs/shot-resting.png)
+
+> *At rest. Seventy-three parts of the week still in the coffer, so he is
+> cheerful about it.*
+
+He floats above every window and reports two numbers Claude Code exposes nowhere
+else: how much of your five-hour and seven-day allowance is left. His face tracks
+the week — a broad grin at nothing spent, a stern frown near the end, and nine
+faces in between. The sprite sheet from the 2002 game, decoded and upscaled,
+doing the job it was drawn for.
+
+## Reading the ledger
+
+Art deco, set in Times. Each limit is a column of ten coins, one per tenth of the
+allowance. Struck for what remains, hollow for what is spent. Beneath each, the
+tally and the wait, both in roman.
+
+| | |
+|---|---|
+| ● ● ● ● | struck gold — what remains. Seven coins is seventy-odd percent left |
+| ○ ○ ○ | hollow — what is spent. Countable without reading a number |
+| ● iron-red | past 80% spent. One coin left means nine percent, not none |
+| `LXXIII` | percent remaining. `II d` beneath it is when the coffer refills |
+
+Five hours on the left, seven days on the right, both pushed to the edges so his
+words get the middle — and his words are set at the largest size the room allows.
+
+![The same panel with both columns nearly empty and the numerals in red; the scribe is scowling](docs/shot-alarm.png)
+
+> *Thirteen percent of the week, nine of the hour. The coins turn iron-red, and
+> so does he.*
 
 ## Talking to him
 
@@ -45,6 +58,11 @@ He is never rude and never useful. Actual answers:
 | is my code any good? | As thou sayest, sire. Mine eyes deceive. |
 | what dost thou think of me? | Ambitious beyond most men, sire. |
 | fix the bug in gm1.mjs | Would that I had hands. Ask Opus. |
+
+![The panel reading 'Spare thy finger, sire. Please.' while the scribe glares](docs/shot-poked.png)
+
+> *Poke him in the face and he thanks you for it, in his fashion. That has its
+> own pool of twenty lines.*
 
 Being *helpful* is the failure mode, not rudeness. The first draft of this
 persona kept slipping into "Where hath it broken?" and "Lay bare thy code" —
@@ -90,6 +108,10 @@ step = round(seven_day_used_% / 10)      0 = broad grin ... 10 = stern frown
 | speaking | 11→21→11 | Claude hands the turn back to you, or you interrupt |
 | pleased | 22→32→22 | you send a message, or a `git commit` succeeds |
 | displeased | 33→43→33 | you poke his face, a tomato lands, or a tool errors |
+
+![The panel reading 'Tis writ in the ledger, lord.' while the scribe beams](docs/shot-pleased.png)
+
+> *`pleased`, mid-roll. Something committed.*
 
 Every trigger is an event that either happened or it didn't. Message *sentiment*
 was tried and cut: rules for it have unbounded surface area, and three live tests
@@ -137,6 +159,10 @@ trusting the colour key, never activates, stays out of alt-tab, and is withdrawn
 the moment there is nothing left to draw. Its bounds come from the *virtual*
 screen — on the machine this was built on that is 3000x1920 starting at y=-104,
 and a primary-only rect would put half the desktop out of reach.
+
+![The scribe's face covered in tomato pulp, the ledger reading PELTED and 'I am honoured, my lord. Truly.'](docs/shot-pelted.png)
+
+> *A hit. The panel jolts, his head rocks back, and he is grateful.*
 
 A direct hit still plays out on his face:
 
@@ -317,6 +343,9 @@ the panel somewhere fixed for screenshots.
 - **The sprites are not in this repository and must not be redistributed from
   it.** `assets/frames/*.png` are decoded from your own installed copy of the
   game and stay local; the MIT licence covers the code here and nothing else.
+  The screenshots in `docs/` show the program running, which is a different
+  thing from shipping the art — but the art in them is Firefly Studios' either
+  way, and this only reads it off your own disk.
 - Compaction is **not** detected: no `compact_boundary` record was ever observed
   in a real transcript, so there's no regex guessing at one.
 - No "5-hour reset" trigger either — the state file only updates while the

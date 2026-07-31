@@ -124,6 +124,11 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   the measured band and only shrink as far as they must; words are dropped
   only when the smallest size still overruns. Where it wraps depends on the
   font, not on a character count.
+- **A screenshot is not the sprite.** `assets/` stays gitignored because the
+  extracted frames *are* Firefly's art. The five screenshots in `docs/` are
+  pictures of the program running, which is ordinary documentation and is
+  tracked -- the README says so in as many words rather than leaving the two
+  cases looking like a contradiction.
 - **The sample tool now drives the real panel** instead of keeping its own copy
   of the drawing code. The duplicate meant a redesign had to be written twice
   and the samples could quietly stop being the truth. It builds a `ScribePanel`

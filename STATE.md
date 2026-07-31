@@ -160,9 +160,19 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   the manner, and refusing is shown as one of the strokes.
 - **Named bans beat gestured ones.** "Speak never of tools, files, permissions"
   still produced "bid artificer read file". The forbidden words are listed.
-- **A fifty-line pool still repeats.** Plain random.choice says the same thing
-  twice in a row often enough to spoil a taunt, which is the one thing a taunt
-  cannot do. Draws avoid the last twelve; measured 0 repeats over 40.
+- **A pool still repeats however big it gets.** Plain random.choice says the
+  same thing twice in a row often enough to spoil a taunt, which is the one
+  thing a taunt cannot do. Draws avoid the last twelve: 0 back-to-back repeats
+  in 400 draws from each of the five pools. The memory has to stay *below* the
+  smallest pool it serves, or the fresh list empties every draw and the whole
+  thing degrades silently back into random.choice -- the omens are only safe
+  from that because they never go through it.
+- **515 lines, in ten pools, all of them 5x what they were.** A hundred lines
+  of undifferentiated grovelling read as one line said a hundred times, so each
+  pool is cut into veins with a distinct joke: congratulation, apology for the
+  mess, requests for more, the stain kept as a relic, the entry in the ledger.
+  The pools are checked mechanically -- exactly 5x, <=7 words, ASCII, no banned
+  words, no duplicate anywhere across all 515.
 - **The brain gets no tools.** Without that he goes and reads the repo when asked
   to fix something; one such question took 45s and timed out mid-tool-call. His
   refusal then leaked the plumbing, so the persona gives him no hands and no

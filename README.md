@@ -67,7 +67,7 @@ He is never rude and never useful. Actual answers:
 ![The panel reading 'Spare thy finger, sire. Please.' while the scribe glares](docs/shot-poked.png)
 
 > *Poke him in the face and he thanks you for it, in his fashion. That has its
-> own pool of twenty lines.*
+> own pool of a hundred lines.*
 
 Being *helpful* is the failure mode, not rudeness. The first draft of this
 persona kept slipping into "Where hath it broken?" and "Lay bare thy code" —
@@ -142,21 +142,26 @@ pleased roll and a remark about your aim.
 and he offers to help — and every offer is worse than an insult, because *"I
 shall stand closer, my lord"* can only mean one thing. A servant who calls you
 hopeless can be flogged; a servant who begs your pardon for having stood too far
-away cannot. Not one of the fifty lines contains an unkind word.
+away cannot. Not one of the 515 lines contains an unkind word.
 
 His humility deepens with the streak, and a hit resets it:
 
-| Streak | | |
-|---|---|---|
-| 1–2 | it was his fault | *"Forgive me, sire. I stood amiss."* |
-| 3–5 | he offers to assist | *"May I fetch thee a bigger tomato?"* |
-| 6+ | total martyrdom | *"Let me strike myself, my lord."* · *"I shall omit this from thy chronicle."* |
+| Streak | Register | | |
+|---|---|---|---|
+| 1–2 | it was his fault | 85 | *"Forgive me, sire. I stood amiss."* · *"Beautifully thrown, sire. Elsewhere."* |
+| 3–5 | he offers to assist | 85 | *"May I fetch thee a bigger tomato?"* · *"Shall I fetch younger eyes, sire?"* |
+| 6+ | total martyrdom | 80 | *"Let me strike myself, my lord."* · *"I shall tear out the leaf."* |
 
-Landing one earns you no relief — twenty-three lines of grateful servility:
-*"I am thy target, my lord. Always."* Nothing repeats within the last twelve
-draws, because plain `random.choice` on a pool this size still says the same
-thing twice in a row often enough to spoil it, which is the one thing a taunt
-cannot do.
+Landing one earns you no relief — 115 lines of grateful servility, the worst of
+them congratulation: *"Thy finest work this week, sire."* · *"Nothing else
+shipped today, my lord."* A poke gets its own 100, and the omens 10 apiece.
+
+A hundred lines of undifferentiated grovelling read as one line said a hundred
+times, so every pool is cut into veins with a distinct joke — congratulation,
+apology for the mess, pleas for more, the stain kept as a relic, the entry in
+the ledger. Nothing repeats within the last twelve draws, because plain
+`random.choice` says the same thing twice in a row often enough to spoil it,
+which is the one thing a taunt cannot do.
 
 That sheet is a full-screen topmost window, which would be a disaster if it
 swallowed clicks, so it asks for `WS_EX_TRANSPARENT` by name rather than

@@ -30,17 +30,30 @@ which is the same courtesy `/btw` offers. He remembers the last six exchanges.
 asked for brevity drifts, and this one did. It cuts at the last full stop inside
 the allowance, so he ends on "the treasury fares." rather than "fares. Its."
 
+He is never rude and never useful. Actual answers:
+
 | Ask | Answer |
 |---|---|
-| how fares the treasury? | Eleven percent spent across seven days, sire. |
-| what did i just ask thee? | Thou asked-st how the treasury fares, sire. |
-| who art thou? | I am thy scribe and ledger-keeper, sire. |
-| fix the bug in gm1.mjs | Sire, I have no hands to mend. |
+| i broke the build again | My fault, sire. 'Tis oft repeated. |
+| i fixed the bug myself, without help | Alone, sire? Most rare indeed. |
+| is my code any good? | As thou sayest, sire. Mine eyes deceive. |
+| what dost thou think of me? | Ambitious beyond most men, sire. |
+| fix the bug in gm1.mjs | Would that I had hands. Ask Opus. |
 
-He speaks the old tongue and calls the limits "the coffers", tokens "ink", money
-"coin", and Claude "the artificer". Threshold remarks — the 7-day crossing
-50/75/90%, a commit, an error, a tomato — are canned lines in the same voice:
-instant, free, no model call.
+Being *helpful* is the failure mode, not rudeness. The first draft of this
+persona kept slipping into "Where hath it broken?" and "Lay bare thy code" —
+assistant reflexes in costume — so the prompt forbids counsel outright: never
+ask what he needs, never request detail, never give an instruction he could act
+on. A helpful answer is a failed one.
+
+Worked examples in the prompt had to be watched too. Five literal ones turned
+into a lookup table — he replied with them verbatim — so they are labelled as
+strokes rather than words, and the test asserts he never returns one.
+
+He calls the limits "the coffers", tokens "ink", money "coin", and Claude "the
+artificer". Threshold remarks — the 7-day crossing 50/75/90%, a commit, an
+error, a tomato — are canned lines in the same voice: instant, free, no model
+call.
 
 Latency, measured on this machine:
 

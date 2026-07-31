@@ -40,7 +40,7 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 
-from scribe_brain import OMENS, PELTED, Brain, Taunts, mockery
+from scribe_brain import OMENS, PELTED, POKED, Brain, Taunts, mockery
 
 HERE = Path(__file__).resolve().parent
 FRAMES = HERE / "assets" / "frames"
@@ -117,8 +117,9 @@ COMMITTED = re.compile(r"^\[[^\]\s]+ [0-9a-f]{7,}\]", re.M)
 
 # --------------------------------------------------------------- the ledger
 
-# Aged gold on near-black, set in Times. Deco reads as metal, so a band needs a
-# dark rim, a specular line a third of the way in, and a dark rim again.
+# Aged gold on near-black, set in Times. Deco reads as metal, so nothing here is
+# a flat fill: everything struck has a dark rim, a bright line off-centre, and a
+# dark rim again.
 GROUND = "#0a0908"
 GOLD_HI, GOLD, GOLD_LO = "#f6e6b4", "#c9a227", "#4a3a14"
 RAY, IVORY, GHOST = "#141109", "#e8dfc8", "#5d523c"
@@ -126,31 +127,45 @@ ALARM_HI = "#f0a89a"
 
 TIMES = "Times New Roman"
 
-# The rings are drawn four times oversized and shrunk down, because Tk cannot
-# anti-alias an arc: stacking create_arc calls leaves a staircase along the rim
-# that no bezel hides. Off the canvas there is room for a real gradient too,
-# which is what makes the band read as struck metal rather than a coloured
-# stripe. Bands are built once; a value costs only a pie mask.
-SS = 4
-R_OUT, R_IN = 54, 40
-BAND_W, BAND_H = R_OUT * 2 + 6, R_OUT + 6
+COL_MAX = 54             # widest a limit column may grow before its type shrinks
+COL_GAP = 5              # clear air between a column and his words
+COL_INSET = 11           # and between a column and the frame; less looks cramped
+SPEECH_SIZES = (20, 18, 16, 14, 12)
 
-METAL = {
-    "gold": [(0.00, "#3d3010"), (0.16, "#a5811f"), (0.34, "#fff4c8"),
-             (0.55, "#c9a227"), (0.82, "#7d6019"), (1.00, "#302509")],
-    "alarm": [(0.00, "#3f120c"), (0.16, "#993526"), (0.34, "#ffd8cd"),
-              (0.55, "#c04630"), (0.82, "#7a2519"), (1.00, "#2c0d08")],
-    "track": [(0.00, "#14100a"), (0.30, "#2a2211"), (0.60, "#241d0e"),
-              (1.00, "#100d07")],
+# Each limit is a column of ten coins, one per tenth of the allowance, and what
+# remains is what is still struck. Ten dots read at a glance in a way a numeral
+# never does: you see three gone without reading anything.
+#
+# They are drawn four times oversized and shrunk down, because Tk cannot
+# anti-alias a circle any more than it can an arc -- and at this size the
+# staircase is not an artefact along the rim, it is most of the dot. Off the
+# canvas there is room for a real gradient too, which is what makes a coin look
+# struck rather than filled. Five images are built, once, for the whole run.
+SS = 4
+DOT_R = 4.6              # radius at final size
+DOT_BOX = 13             # image the coin is struck on; must clear 2R plus rim
+DOT_PITCH = 11           # centre to centre down the column
+
+# Dark rim, body, then the highlight -- and the whole gradient is walked with
+# the centre creeping up and left, so the dome catches light from one side
+# instead of glowing out of its middle.
+COIN = {
+    "gold": [(0.00, "#4a3a14"), (0.12, "#8a6a1c"), (0.45, "#c9a227"),
+             (0.80, "#efd98a"), (1.00, "#fff4c8")],
+    "alarm": [(0.00, "#4a170f"), (0.12, "#8d2f21"), (0.45, "#bf4b3a"),
+              (0.80, "#f0a89a"), (1.00, "#ffe0d6")],
 }
 
 try:
-    from PIL import Image, ImageChops, ImageDraw, ImageTk
+    from PIL import Image, ImageDraw, ImageTk
     HAVE_PIL = True
-except ImportError:          # the panel still runs, the rings are just flat
+except ImportError:          # the panel still runs, the coins are just flat
     HAVE_PIL = False
 
-_bands, _rings = {}, {}
+_dots = {}
+
+ROMAN = ((100, "C"), (90, "XC"), (50, "L"), (40, "XL"), (10, "X"),
+         (9, "IX"), (5, "V"), (4, "IV"), (1, "I"))
 
 
 def hexrgb(h):
@@ -172,36 +187,60 @@ def gradient(stops, t):
     return stops[-1][1]
 
 
-def band(key):
-    if key not in _bands:
-        big = Image.new("RGBA", (BAND_W * SS, BAND_H * SS), (0, 0, 0, 0))
-        pen = ImageDraw.Draw(big)
-        cx, cy = BAND_W * SS // 2, (R_OUT + 3) * SS
-        steps = (R_OUT - R_IN) * SS
-        for i in range(steps):
-            r = R_OUT * SS - i
-            pen.arc([cx - r, cy - r, cx + r, cy + r], 180, 360,
-                    fill=hexrgb(gradient(METAL[key], i / float(steps - 1))) + (255,),
-                    width=2)
-        _bands[key] = big.resize((BAND_W, BAND_H), Image.LANCZOS)
-    return _bands[key]
+def dot_image(struck, key):
+    """One coin: struck and gold, or spent and only its outline left."""
+    slot = (struck, key)
+    if slot not in _dots:
+        n = DOT_BOX * SS
+        img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+        pen = ImageDraw.Draw(img)
+        c = n / 2.0
+        if struck:
+            steps = int(DOT_R * SS)
+            for i in range(steps):
+                r = DOT_R * SS - i
+                t = i / float(steps - 1)
+                # The light is up and to the left, so the bright core sits there
+                # rather than in the middle, which would read as a bead.
+                ox, oy = -0.24 * DOT_R * SS * t, -0.28 * DOT_R * SS * t
+                pen.ellipse([c + ox - r, c + oy - r, c + ox + r, c + oy + r],
+                            fill=hexrgb(gradient(COIN[key], t)) + (255,))
+        else:
+            r = DOT_R * SS
+            pen.ellipse([c - r, c - r, c + r, c + r], fill=hexrgb(GROUND) + (255,),
+                        outline=hexrgb(GOLD_LO) + (255,), width=max(1, int(1.1 * SS)))
+        _dots[slot] = ImageTk.PhotoImage(img.resize((DOT_BOX, DOT_BOX), Image.LANCZOS))
+    return _dots[slot]                                # the dict keeps it alive
 
 
-def ring_image(value, key):
-    slot = (value, key)
-    if slot not in _rings:
-        img = band("track").copy()
-        if value:
-            sweep = max(2.5, 180.0 * value / 100.0)   # one percent still reads
-            mask = Image.new("L", (BAND_W * SS, BAND_H * SS), 0)
-            far = (R_OUT + 3) * SS + R_OUT * SS
-            ImageDraw.Draw(mask).pieslice([3 * SS, 3 * SS, far, far],
-                                          180, 180 + sweep, fill=255)
-            mask = mask.resize((BAND_W, BAND_H), Image.LANCZOS)
-            lit = band(key)
-            img.paste(lit, (0, 0), ImageChops.multiply(lit.split()[3], mask))
-        _rings[slot] = ImageTk.PhotoImage(img)        # the dict keeps it alive
-    return _rings[slot]
+def roman(n):
+    """Nothing shown here passes three hundred, so C is as far as it need go."""
+    if n <= 0:
+        return "NULLA"          # the medieval nought; Rome had no glyph for it
+    out = []
+    for value, glyph in ROMAN:
+        while n >= value:
+            out.append(glyph)
+            n -= value
+    return "".join(out)
+
+
+def roman_span(mins):
+    """A wait, in roman, with the unit in lower case.
+
+    M and D are numerals themselves, so "XLV M" reads as a broken numeral to
+    anyone who can read the rest of the column. Lower case cannot be mistaken
+    for a digit.
+    """
+    if mins is None:
+        return "-"
+    if mins < 1:
+        return "anon"
+    if mins < 180:
+        return f"{roman(mins)} m"
+    if mins < 60 * 48:
+        return f"{roman(mins // 60)} h"
+    return f"{roman(mins // 1440)} d"
 
 
 def clip_line(x0, y0, x1, y1, box):
@@ -326,18 +365,13 @@ def epoch(ts):
 
 
 def until(ts):
+    """Minutes until the reset, or None. The ledger sets it in roman, so what
+    comes back has to be the number and not a rendering of it."""
     secs = epoch(ts)
     if secs is None:
-        return ""
+        return None
     left = secs - time.time()
-    if left <= 0:
-        return ""
-    mins = int(left // 60)
-    if mins < 60:
-        return f"{mins}m"
-    if mins < 60 * 48:
-        return f"{mins // 60}h{mins % 60:02d}"
-    return f"{mins // 1440}d"
+    return int(left // 60) if left > 0 else None
 
 
 def pingpong(span):
@@ -532,7 +566,7 @@ class ScribePanel:
         self.data = {}
         self.next_state_at = 0.0
         self.next_beat_at = 0.0
-        self.numeral = None      # measured once, on the first draw
+        self.column = None       # measured once, on the first draw
         self.pull = None         # the sling, while you are drawing it back
         self.screen_splats = []  # pulp that never reached him
         self.splatter = Splatter(root)
@@ -713,6 +747,16 @@ class ScribePanel:
         self.speech = self.taunts.pick(mockery(self.misses))
         self.waiting_since = None
         self.start("pleased")           # your failure is the best of his day
+
+    def poked(self):
+        """A finger in the face. Beneath a tomato, and he lets that be known.
+
+        Sets the words directly rather than through say(), which would start the
+        speaking roll -- the scowl is the joke, as it is when you miss him.
+        """
+        self.speech = self.taunts.pick(POKED)
+        self.waiting_since = None
+        self.start("displeased")
 
     def impact(self, x, y):
         now = time.time()
@@ -956,7 +1000,7 @@ class ScribePanel:
             else:
                 self.throw()                # a tap still lobs it straight at him
         elif self.pressed_face and moved < 4:
-            self.start("displeased")        # poked in the face
+            self.poked()                    # a finger in the face
         self.armed = None
         self.pull = None
         self.drag = None
@@ -1085,62 +1129,97 @@ class ScribePanel:
 
     # ---------------------------------------------------------------- render
 
-    def dial(self, cx, cy, value, alarmed):
-        """A half-circle gauge. Falls back to a flat arc without Pillow rather
-        than refusing to draw -- the panel is still readable, just not struck."""
+    def dot(self, cx, cy, struck, alarmed):
+        """One coin. Falls back to a plain circle without Pillow rather than
+        refusing to draw -- the reading survives, only the strike is lost."""
         c = self.canvas
-        pct = None if value is None else max(0, min(100, int(round(value))))
         if HAVE_PIL:
-            c.create_image(cx, cy + 3, anchor="s", tags="ledger",
-                           image=ring_image(pct, "alarm" if alarmed else "gold"))
+            c.create_image(cx, cy, anchor="center", tags="ledger",
+                           image=dot_image(struck, "alarm" if alarmed else "gold"))
             return
-        for r in range(R_OUT, R_IN, -1):
-            c.create_arc(cx - r, cy - r, cx + r, cy + r, start=180, extent=-180,
-                         style="arc", outline="#241d0e", width=3, tags="ledger")
-        if pct:
-            sweep = min(-2.5, -180.0 * pct / 100.0)
-            for r in range(R_OUT, R_IN, -1):
-                c.create_arc(cx - r, cy - r, cx + r, cy + r, start=180, extent=sweep,
-                             style="arc", outline=C_RED if alarmed else GOLD,
-                             width=3, tags="ledger")
+        r = DOT_R
+        c.create_oval(cx - r, cy - r, cx + r, cy + r,
+                      fill=(C_RED if alarmed else GOLD) if struck else GROUND,
+                      outline=GOLD_LO, tags="ledger")
 
-    def numeral_fit(self, sample="100%"):
-        """Largest Times size whose corners still clear the ring's inner circle.
+    def column_fit(self):
+        """How wide a column has to be, measured against the widest reading.
 
-        The room inside a half ring is not its inner diameter -- it narrows as
-        you climb, so the block's top corners bind, not its width. Fitted once
-        against the widest reading and cached, then used for both dials so they
-        never disagree.
+        LXXXVIII is nearly twice the width of C, and it is the one reading a
+        guessed column width would clip. Everything else in the ledger -- where
+        the columns sit, how much room is left for his words -- falls out of
+        this measurement rather than being chosen alongside it.
         """
-        if self.numeral is None:
+        if self.column is None:
             c = self.canvas
-            self.numeral = (12, 12)
-            for size in range(24, 11, -1):
-                probe = c.create_text(-900, -900, text=sample, anchor="center",
+            self.column = (8, COL_MAX / 2.0 + COL_GAP)
+            for size in range(13, 7, -1):
+                probe = c.create_text(-900, -900, text="LXXXVIII", anchor="center",
                                       font=(TIMES, size, "bold"))
-                x0, y0, x1, y1 = c.bbox(probe)
+                x0, _y0, x1, _y1 = c.bbox(probe)
                 c.delete(probe)
-                half_w, half_h = (x1 - x0) / 2.0, (y1 - y0) / 2.0
-                rise = half_h + 2
-                if math.hypot(half_w, rise + half_h) <= R_IN - 3:
-                    self.numeral = (size, rise)
+                if x1 - x0 <= COL_MAX:
+                    self.column = (size, (x1 - x0) / 2.0 + COL_GAP)
                     break
-        return self.numeral
+        return self.column
 
-    def fit_text(self, cx, top, width, max_h, text, fill, font):
-        """Drop words until the measured block fits its band.
+    def limit_column(self, cx, top, size, value, label, mins):
+        """One limit as ten coins: struck for what remains, empty for what is
+        spent, with the tally and the wait beneath it in roman.
 
-        A centred text item grows both ways as it wraps, so a long line walked
-        straight into the mood word below. Where it wraps depends on the font,
-        not on a character count, so it has to be measured.
+        They settle at the foot rather than filling from the top, so what is
+        left sits against the numeral that counts it.
         """
         c = self.canvas
-        words = " ".join(text.split()).split(" ")
-        for n in range(len(words), 0, -1):
-            body = " ".join(words[:n]) + ("" if n == len(words) else " ...")
-            item = c.create_text(cx, top, anchor="n", width=width, text=body,
-                                 fill=fill, font=font, justify="center", tags="ledger")
-            x0, y0, x1, y1 = c.bbox(item)
+        alarmed = value is not None and value >= 80
+        left = None if value is None else 100 - value
+        # A tenth is the unit, but anything left at all keeps one coin struck:
+        # nine percent remaining is not the same state as none, and an empty
+        # column is the one reading that must mean empty.
+        struck = 0 if not left else clamp(max(1, left // 10), 0, 10)
+
+        c.create_text(cx, top, anchor="n", text=label, fill=GHOST,
+                      font=(TIMES, 7), tags="ledger")
+        first = top + 22
+        for i in range(10):
+            self.dot(cx, first + i * DOT_PITCH, i >= 10 - struck, alarmed)
+
+        foot = first + 9 * DOT_PITCH
+        c.create_text(cx, foot + 17, anchor="center",
+                      text=roman(left) if left is not None else "-",
+                      fill=(ALARM_HI if alarmed else GOLD_HI) if left is not None else GHOST,
+                      font=(TIMES, size, "bold"), tags="ledger")
+        # Brighter than the label above it: when the coffer refills is worth
+        # more than being told, again, which coffer this is.
+        c.create_text(cx, foot + 32, anchor="center", text=roman_span(mins),
+                      fill=C_DIM, font=(TIMES, 8, "italic"), tags="ledger")
+
+    def draw_speech(self, cx, cy, width, max_h, text):
+        """His words, as large as they will go in the room the columns leave.
+
+        Size is tried from the top down and the first that fits is kept, so a
+        short remark is set big and a long one only shrinks as far as it must.
+        A centred block grows both ways as it wraps, so the height has to be
+        measured -- where it wraps depends on the font, not on a letter count.
+        """
+        c = self.canvas
+        body = " ".join(text.split())
+        for size in SPEECH_SIZES:
+            item = c.create_text(cx, cy, anchor="center", width=width, text=body,
+                                 fill=IVORY, font=(TIMES, size, "italic"),
+                                 justify="center", tags="ledger")
+            _x0, y0, _x1, y1 = c.bbox(item)
+            if y1 - y0 <= max_h:
+                return
+            c.delete(item)
+        # Smaller than this is not worth reading, so words go instead.
+        words = body.split(" ")
+        for n in range(len(words) - 1, 0, -1):
+            item = c.create_text(cx, cy, anchor="center", width=width,
+                                 text=" ".join(words[:n]) + " ...", fill=IVORY,
+                                 font=(TIMES, SPEECH_SIZES[-1], "italic"),
+                                 justify="center", tags="ledger")
+            _x0, y0, _x1, y1 = c.bbox(item)
             if y1 - y0 <= max_h:
                 return
             c.delete(item)
@@ -1178,28 +1257,17 @@ class ScribePanel:
         c.create_line(x + w / 2 - 54, y + 39, x + w / 2 + 54, y + 39, fill=GOLD_LO,
                       tags="ledger")
 
-        size, rise = self.numeral_fit()
-        for frac, key, label, reset in ((0.29, "week", "VII DAYS", "week_reset"),
-                                        (0.71, "five", "V HOURS", "five_reset")):
-            v = d.get(key)
-            alarmed = v is not None and v >= 80
-            cx, cy = x + w * frac, y + 104
-            self.dial(cx, cy, v, alarmed)
-            # "--" rather than the raw absence: a blank dial is a state, not a fault.
-            c.create_text(cx, cy - rise, anchor="center",
-                          text=f"{v}%" if v is not None else "--",
-                          fill=(ALARM_HI if alarmed else GOLD_HI) if v is not None else GHOST,
-                          font=(TIMES, size, "bold"), tags="ledger")
-            c.create_text(cx, cy + 13, anchor="center", text=spaced(label),
-                          fill=C_DIM, font=(TIMES, 7), tags="ledger")
-            anew = d.get(reset)
-            c.create_text(cx, cy + 26, anchor="center",
-                          text=f"anew in {anew}" if anew else "no reckoning",
-                          fill=GHOST, font=(TIMES, 8, "italic"), tags="ledger")
+        # The five hours on the left, the seven days on the right, and the whole
+        # middle of the ledger left to him. Columns are far narrower than the
+        # dials they replaced, which is the point: his words get the room.
+        size, half = self.column_fit()
+        for cx, key, label, reset in ((x + COL_INSET + half, "five", "V HOURS", "five_reset"),
+                                      (x + w - COL_INSET - half, "week", "VII DAYS", "week_reset")):
+            self.limit_column(cx, y + 48, size, d.get(key), label, d.get(reset))
 
         # His last words, and nothing older. A speech screen, not a log.
-        self.fit_text(x + w / 2, y + 148, w - 40, 46, self.speech, IVORY,
-                      (TIMES, 12, "italic"))
+        self.draw_speech(x + w / 2, y + 122, w - (COL_INSET + half * 2) * 2,
+                         128, self.speech)
 
         step = self.mood_step()
         word = ROLL_WORDS[self.roll.name] if self.roll else MOOD_WORDS[step]
@@ -1208,7 +1276,9 @@ class ScribePanel:
         c.create_text(x + w / 2, y + h - 20, anchor="center", text=spaced(word),
                       fill=C_DIM, font=(TIMES, 9), tags="ledger")
         if not d.get("fresh"):
-            c.create_text(x + w - 14, y + h - 20, anchor="e", text="stale",
+            # Under the title rather than beside it, where it sat on the corner
+            # chevrons. Read as a subtitle it says the right thing anyway.
+            c.create_text(x + w / 2, y + 48, anchor="center", text="stale",
                           fill=GHOST, font=(TIMES, 8, "italic"), tags="ledger")
 
     def tick(self):

@@ -6,8 +6,13 @@ The Scribe is running and committed. Everything below is verified unless the
 ## Live right now
 
 Panel, sprites, mood ramp, the three animations, the deco ledger, the aimed
-tomato and its screen splats, the fifty taunts, the `/scribe` command and the
+tomato and its screen splats, the taunts, the `/scribe` command and the
 statusline shim -- all wired and seen working.
+
+The ledger reads as two columns of ten coins pushed to the edges -- five hours
+left, seven days right -- with the tally and the wait in roman beneath each, and
+the whole middle given over to his words at up to 20pt. Rendered in every state
+that has ever broken it and checked by eye: `assets/ledger-samples/`.
 
 He now launches himself from a `SessionStart` hook. Measured, not assumed:
 a cold run spawns exactly one panel and writes a heartbeat; four runs against a
@@ -93,17 +98,32 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   statusline last and re-primes the transcript reader on every switch, so
   triggers land wherever redrew most recently. It degrades to silence, not a
   crash. Auto-launch makes it the normal case; not fixed.
-- **Tk cannot anti-alias an arc.** The gauges are drawn four times oversized
-  with a real gradient and shrunk with Lanczos, because stacked `create_arc`
-  calls leave a staircase along the rim that no bezel hides. Bands are built
-  once; a value costs only a pie mask. 4.2ms cached, 6.7ms when the value moves
-  every frame, against a 33.3ms budget. This is why the panel now wants Pillow.
-- **The room inside a half ring is not its inner diameter.** It narrows as you
-  climb, so a numeral's top corners bind, not its width -- "100%" fitted on
-  width alone lands squarely on the band.
+- **Tk cannot anti-alias a curve.** Everything round is drawn four times
+  oversized with a real gradient and shrunk with Lanczos. It was true of the
+  half-ring gauges and it is worse for the coins that replaced them: at a 4.6px
+  radius the staircase is not an artefact along the rim, it is most of the dot.
+  Five images are built once for the whole run. This is why the panel wants
+  Pillow.
+- **The columns are sized by measurement, not by choice.** `LXXXVIII` is nearly
+  twice the width of `C`, and it is the reading a guessed column width would
+  clip. Everything else -- where the columns sit, how much room is left for his
+  words -- falls out of that one measurement.
+- **`M` and `D` are roman numerals.** A reset written `XLV M` reads as a broken
+  numeral to anyone who can read the column above it. The units are lower case
+  for that reason alone.
+- **Nine percent left is not the same state as none.** A tenth is the unit, but
+  flooring alone empties the column while the numeral still says `IX`. Anything
+  left at all keeps one coin struck, so an empty column can only mean empty --
+  the same rule the old gauge used to keep one percent visible.
 - **A centred text block grows both ways as it wraps**, so a long line walked
-  into the mood word below it. Words are dropped until the *measured* block
-  fits; where it wraps depends on the font, not on a character count.
+  into the mood word below it. His words are set at the largest size that fits
+  the measured band and only shrink as far as they must; words are dropped
+  only when the smallest size still overruns. Where it wraps depends on the
+  font, not on a character count.
+- **The sample tool now drives the real panel** instead of keeping its own copy
+  of the drawing code. The duplicate meant a redesign had to be written twice
+  and the samples could quietly stop being the truth. It builds a `ScribePanel`
+  with `once=True`, sets `data`/`speech` by hand and screen-grabs.
 - **A full-screen overlay must ask for click-through by name.** The colour key
   alone is not a guarantee, and a topmost sheet that swallows clicks locks the
   desktop out. `WS_EX_TRANSPARENT | NOACTIVATE | TOOLWINDOW` are set explicitly

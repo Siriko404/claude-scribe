@@ -7,17 +7,23 @@ you put it (including on a second monitor). Right-click or Esc closes it.
 ```
 +--------------------------------------------------+
 |  ---   T H E   L E D G E R   ---  |              |
-|      __              __           |              |
-|    /63%\           /12%\          | [ 220x220 ]  |
-|   VII DAYS        V HOURS         |   sprite     |
-|   anew in 2d      anew in 1h      |              |
-|  Sixty-three parts spent, my lord.|              |
-|      R E A D I N G   A L O U D    |              |
+|  V HOURS               VII DAYS   |              |
+|     o                     o       | [ 220x220 ]  |
+|     o                     o       |   sprite     |
+|     @   Sixty-three       o       |              |
+|     @   parts spent,      @       |              |
+|     @   my lord.          @       |              |
+|     @                     @       |              |
+|  LXXXVIII              LXXIII     |              |
+|    LXIV m   CHEERFUL     II d     |              |
 +--------------------------------------------------+
 ```
 
-Art deco, set in Times: two half-circle gauges struck in gold, his last words
-below them, his humour under that. The gauges turn iron-red past 80%.
+Art deco, set in Times. Each limit is a column of ten coins — one per tenth of
+the allowance, struck for what remains and hollow for what is spent — with the
+tally and the wait beneath it in roman. Both columns are pushed to the edges so
+his words get the middle, and they are set as large as the room allows. The
+coins turn iron-red past 80% spent.
 
 ## Talking to him
 
@@ -179,7 +185,7 @@ to 6.3 / 6.3 / 7.0 at exactly frames 11, 22 and 33.
 
 | File | Role |
 |---|---|
-| `scribe_window.py` | the panel — tkinter, plus Pillow for the gauges |
+| `scribe_window.py` | the panel — tkinter, plus Pillow for the coins |
 | `scribe_brain.py` | his voice, memory and the Haiku call |
 | `hooks/scribe-launch.mjs` | SessionStart hook: summons him, records where the checkout lives |
 | `commands/scribe.md` | the `/scribe` slash command, for forcing the issue by hand |
@@ -255,8 +261,8 @@ it, so moving the checkout is picked up on the next start.
 ## Installing
 
 Windows, Python 3 with tkinter (the standard installer includes it), Pillow
-(`pip install pillow` -- the gauges are drawn oversized and shrunk down, which
-Tk cannot do; without it they fall back to flat arcs), Node 18+, and your own
+(`pip install pillow` -- the coins are drawn oversized and shrunk down, which
+Tk cannot do; without it they fall back to flat circles), Node 18+, and your own
 copy of Stronghold Crusader. Two of the three steps need the
 checkout's absolute path — the third and everything after it do not.
 

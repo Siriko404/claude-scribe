@@ -144,6 +144,31 @@ PELTED = [
     "I live to be struck, sire.",
 ]
 
+# Prodded in the face with a finger. Lesser than a tomato, and he knows it --
+# so he is grateful for the attention and sorry his face was within reach.
+POKED = [
+    "Thy finger honours me, sire.",
+    "Forgive my face, my lord.",
+    "Again, sire? I am willing.",
+    "My cheek is thine, my lord.",
+    "I felt that, sire. Barely.",
+    "Pray, prod as thou wilt.",
+    "Thy servant is soft, my lord.",
+    "Spare thy finger, sire. Please.",
+    "I shall hold still, my lord.",
+    "The other cheek waits, sire.",
+    "'Tis a gentle lord indeed.",
+    "I am here to be touched.",
+    "Let me bear more, my lord.",
+    "Forgive me for being reachable.",
+    "A mighty blow, my lord. Truly.",
+    "I felt thy strength, sire. Some.",
+    "Poke on, my lord. I endure.",
+    "Thy servant thanks thee for noticing.",
+    "Is there aught else, my lord?",
+    "I shall record this assault, sire.",
+]
+
 # And when you miss, his humility deepens.
 MOCKERY = {
     # Sorry. It was his fault. Obviously it was his fault.

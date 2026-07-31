@@ -54,12 +54,13 @@ STATES = [
                   speech="The coffers are bare, sire.")),
     ("noledger", dict(week=None, five=None, week_reset=None, five_reset=None,
                       speech="I have no ledger to read, sire.", fresh=False)),
-    ("longtongue", dict(week=37, five=12, week_reset=3100, five_reset=179,
+    # The worst case is both at once: the widest numeral a column can hold and
+    # a speech tall enough to fill its band. Set apart they never meet, and the
+    # gutter between them is only five pixels wide.
+    ("longtongue", dict(week=12, five=12, week_reset=179, five_reset=179,
                         speech="Thou hast spent threescore and three parts of thy "
                                "seven-day treasury, and the hour groweth late "
                                "besides, my most improvident lord.")),
-    ("widest", dict(week=12, five=12, week_reset=179, five_reset=179,
-                    speech="LXXXVIII, sire.")),
 ]
 
 

@@ -103,11 +103,15 @@ commands/scribe.md    the slash command, installed to ~/.claude/commands/
   half-ring gauges and it is worse for the coins that replaced them: at a 4.6px
   radius the staircase is not an artefact along the rim, it is most of the dot.
   Five images are built once for the whole run. This is why the panel wants
-  Pillow.
+  Pillow. A ledger frame measured 1.45ms when his words hold still, 2.94ms when
+  they change every frame, and 5.94ms on the longest line there is -- that last
+  walks the whole size ladder and then drops words. The budget is 33.3ms.
 - **The columns are sized by measurement, not by choice.** `LXXXVIII` is nearly
   twice the width of `C`, and it is the reading a guessed column width would
   clip. Everything else -- where the columns sit, how much room is left for his
-  words -- falls out of that one measurement.
+  words -- falls out of that one measurement. The sample that proves it has to
+  put the widest numeral and the tallest speech in the *same* frame: set apart
+  they never meet, and the gutter between them is five pixels.
 - **`M` and `D` are roman numerals.** A reset written `XLV M` reads as a broken
   numeral to anyone who can read the column above it. The units are lower case
   for that reason alone.
